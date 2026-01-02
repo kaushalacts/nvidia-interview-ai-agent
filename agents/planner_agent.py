@@ -1,6 +1,7 @@
 from rag.retrieve import query_articles
 from agents.llm import generate_answer
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo  # Python 3.9+
 
 SYSTEM_PROMPT = """
 You are an expert NVIDIA interview coach.
@@ -9,9 +10,10 @@ Prioritize GPU systems, CUDA, performance, and design thinking.
 """
 
 def generate_daily_plan():
-    today = date.today().isoformat()
+    # Explicit timezone (India)
+    tz = ZoneInfo("Asia/Kolkata")
+    today = datetime.now(tz).strftime("%Y-%m-%d")
 
-    # Retrieve relevant NVIDIA context
     docs = query_articles("CUDA GPU performance NVIDIA", k=3)
 
     context = "\n\n".join(
@@ -21,15 +23,17 @@ def generate_daily_plan():
     prompt = f"""
 {SYSTEM_PROMPT}
 
+Date: {today}
+
 Context:
 {context}
 
 Task:
-Create a structured study plan for today ({today}) with:
-1. Core concept to study
-2. One deep-dive topic
-3. One hands-on or thinking exercise
-4. One interview-style question
+Create a structured study plan for today with:
+1. Core concept
+2. Deep dive topic
+3. Hands-on or thinking exercise
+4. Interview-style question
 
 Keep it concise and actionable.
 """

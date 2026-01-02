@@ -1,93 +1,79 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-from datetime import datetime
-import json
-from pathlib import Path
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from api.database import SessionLocal, engine
+from api import models, schemas
 from agents.interview_agent import answer_question
 from agents.planner_agent import generate_daily_plan
 from agents.evaluator_agent import evaluate_answer
-from pydantic import BaseModel
+from agents.question_agent import generate_interview_question
 
-from rag.embed_store import store_article
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-DATA_DIR = Path("data/articles")
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-class Article(BaseModel):
-    title: str
-    url: str
-    content: str
-    source: str = "nvidia"
-    fetched_at: datetime | None = None
 
-class EvaluationRequest(BaseModel):
-    question: str
-    answer: str
-
-@app.post("/evaluate")
-def evaluate(req: EvaluationRequest):
-    feedback = evaluate_answer(req.question, req.answer)
-    return {
-        "question": req.question,
-        "evaluation": feedback
-    }
+@app.get("/interview/question")
+def get_interview_question():
+    return {"question": generate_interview_question()}
+# -------------------------
+# Planner
+# -------------------------
 @app.get("/plan/today")
-def daily_plan():
-    plan = generate_daily_plan()
-    return {
-        "date": str(__import__("datetime").date.today()),
-        "plan": plan
-    }
-@app.get("/ask")
-def ask(question: str):
-    answer = answer_question(question)
-    return {
-        "question": question,
-        "answer": answer
-    }
-def root():
-    return {"status": "NVIDIA Interview AI Agent running"}
+def plan_today():
+    return {"plan": generate_daily_plan()}
 
-@app.post("/ingest")
-def ingest_article(article: Article):
-    # 1️⃣ Save raw article to disk
-    filename = article.title.replace(" ", "_").lower()[:50]
-    filepath = DATA_DIR / f"{filename}.json"
+# -------------------------
+# Interview AI
+# -------------------------
+@app.post("/ask")
+def ask(req: schemas.AskRequest, db: Session = Depends(get_db)):
+    answer = answer_question(req.question)
 
-    with open(filepath, "w") as f:
-        json.dump(article.model_dump(), f, indent=2, default=str)
+    db.add(models.ChatHistory(
+        question=req.question,
+        answer=answer
+    ))
+    db.commit()
 
-    # 2️⃣ Store in vector DB (RAG memory)
-    # Ensure content is always a string
-    content_text = (
-        article.content
-        if isinstance(article.content, str)
-        else json.dumps(article.content, indent=2, default=str)
-    )      
+    return {"answer": answer}
 
-    store_article(
-        title=article.title,
-        content=content_text,
-        metadata={
-            "url": article.url,
-            "source": article.source
-        }
+# -------------------------
+# Evaluation
+# -------------------------
+@app.post("/evaluate")
+def evaluate(req: schemas.EvalRequest, db: Session = Depends(get_db)):
+    feedback = evaluate_answer(req.question, req.answer)
+
+    score = next(
+        (line for line in feedback.splitlines() if "score" in line.lower()),
+        "Score not found"
     )
 
+    db.add(models.Evaluation(
+        question=req.question,
+        score=score,
+        feedback=feedback
+    ))
+    db.commit()
 
-    return {
-        "message": "Article stored + embedded successfully",
-        "file": str(filepath)
-    }
-from rag.retrieve import query_articles
+    return {"evaluation": feedback}
 
-@app.get("/search")
-def search_articles(q: str):
-    results = query_articles(q)
-    return {
-        "query": q,
-        "results": results
-    }
+# -------------------------
+# History / Progress
+# -------------------------
+@app.get("/history/chat")
+def chat_history(db: Session = Depends(get_db)):
+    return db.query(models.ChatHistory).all()
+
+@app.get("/history/scores")
+def score_history(db: Session = Depends(get_db)):
+    return db.query(models.Evaluation).all()
 

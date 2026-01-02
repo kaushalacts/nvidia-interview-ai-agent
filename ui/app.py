@@ -1,214 +1,212 @@
 import streamlit as st
 import requests
-import time
+import pandas as pd
 
-API_BASE = "http://localhost:8000"
+if "current_question" not in st.session_state:
+    st.session_state.current_question = None
 
-# -------------------------------------------------
-# Page Config
-# -------------------------------------------------
+if "evaluation_result" not in st.session_state:
+    st.session_state.evaluation_result = None
+
+API = "http://localhost:8000"
+
 st.set_page_config(
     page_title="NVIDIA Interview AI Agent",
     page_icon="🟢",
     layout="wide"
 )
 
-# -------------------------------------------------
-# Custom CSS (Dark + NVIDIA Style)
-# -------------------------------------------------
-st.markdown("""
-<style>
-.main {
-    padding: 2rem;
-}
-
-.card {
-    background: linear-gradient(145deg, #161B22, #0E1117);
-    border-radius: 14px;
-    padding: 1.6rem;
-    border: 1px solid #222;
-    margin-bottom: 1.2rem;
-}
-
-.accent {
-    border-left: 5px solid #76B900;
-    padding-left: 1rem;
-}
-
-.stButton button {
-    background: linear-gradient(90deg, #76B900, #5fa300);
-    color: black;
-    font-weight: 600;
-    border-radius: 10px;
-    padding: 0.6rem 1.2rem;
-    border: none;
-    transition: all 0.25s ease-in-out;
-}
-
-.stButton button:hover {
-    transform: scale(1.03);
-    background: linear-gradient(90deg, #8edb00, #76B900);
-}
-
-input, textarea {
-    border-radius: 8px !important;
-}
-
-.status {
-    display: inline-block;
-    padding: 0.35rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    background-color: #1f6f43;
-    color: #eaffea;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# -------------------------------------------------
-# Header
-# -------------------------------------------------
 st.title("🧠 NVIDIA Interview AI Agent")
-st.markdown("<span class='status'>SYSTEM ONLINE</span>", unsafe_allow_html=True)
-st.caption("Plan • Practice • Evaluate — like a real NVIDIA engineer")
+st.caption("Plan • Practice • Evaluate — NVIDIA-style")
 
-st.markdown("---")
-
-# -------------------------------------------------
-# Sidebar (Reset replaces Stop button)
-# -------------------------------------------------
-with st.sidebar:
-    st.header("⚙️ Controls")
-    st.write("Session & system controls")
-
-    if st.button("🔄 Reset Session", use_container_width=True, key="reset_session"):
-        st.session_state.clear()
-        st.rerun()
-
-    st.markdown("---")
-    st.write("Theme: Dark (NVIDIA)")
-    st.write("LLM: Ollama (Local)")
-    st.write("RAG: ChromaDB")
-
-# -------------------------------------------------
-# Tabs
-# -------------------------------------------------
 tabs = st.tabs([
-    "🎯 Daily Plan",
-    "💬 Interview AI",
-    "📝 Evaluation"
+    "🎯 Plan",
+    "💬 Interview",
+    "📝 Interview Mode",
+    "📊 Progress",
+    "📜 History"
 ])
 
-# =================================================
-# TAB 1 — DAILY PLAN
-# =================================================
+
+# ---------------- PLAN ----------------
+# ---------------- PLAN ----------------
 with tabs[0]:
-    st.subheader("🎯 Today’s Focus Plan")
-    st.write("Auto-generated daily study plan based on NVIDIA interview expectations.")
+    st.subheader("🎯 Daily Study Plan")
 
-    if st.button("Generate Plan", use_container_width=True, key="generate_plan_btn"):
-        with st.spinner("Building your focused study plan..."):
-            time.sleep(0.5)
-            resp = requests.get(f"{API_BASE}/plan/today")
-            plan = resp.json()["plan"]
+    if "plan" not in st.session_state:
+        st.session_state.plan = None
 
+    if st.button("Generate Plan", key="plan_btn"):
+        st.session_state.plan = None
+        with st.spinner("Generating plan..."):
+            try:
+                resp = requests.get("http://localhost:8000/plan/today", timeout=60)
+                st.session_state.plan = resp.json()["plan"]
+            except Exception as e:
+                st.error(f"API error: {e}")
+
+    if st.session_state.plan:
+        st.markdown(st.session_state.plan)
+
+# ---------------- INTERVIEW ----------------
+# ---------------- INTERVIEW ----------------
+with tabs[1]:
+    st.subheader("💬 Ask Interview AI")
+
+    if "ask_clicked" not in st.session_state:
+        st.session_state.ask_clicked = False
+
+    if "ai_answer" not in st.session_state:
+        st.session_state.ai_answer = None
+
+    question = st.text_input("Interview Question", key="ask_input")
+
+    if st.button("Ask AI", key="ask_ai_btn"):
+        st.session_state.ask_clicked = True
+        st.session_state.ai_answer = None
+
+    if st.session_state.ask_clicked and question:
+        with st.spinner("Calling interview agent..."):
+            try:
+                resp = requests.post(
+                    "http://localhost:8000/ask",
+                    json={"question": question},
+                    timeout=60
+                )
+                st.session_state.ai_answer = resp.json()["answer"]
+            except Exception as e:
+                st.error(f"API error: {e}")
+
+        st.session_state.ask_clicked = False
+
+    if st.session_state.ai_answer:
+        st.success("AI Answer")
+        st.write(st.session_state.plan)
+# ---------------- EVALUATE ----------------
+# ---------------- EVALUATION ----------------
+# ---------------- INTERVIEW MODE (AGENT-LED) ----------------
+with tabs[2]:
+    st.subheader("📝 Interview Mode (Agent as Interviewer)")
+    st.write("The AI acts as the interviewer. You answer. It evaluates. Repeat.")
+
+    # -------- Session State --------
+    if "interview_started" not in st.session_state:
+        st.session_state.interview_started = False
+
+    if "interview_prompt" not in st.session_state:
+        st.session_state.interview_prompt = ""
+
+    if "current_question" not in st.session_state:
+        st.session_state.current_question = None
+
+    if "evaluation" not in st.session_state:
+        st.session_state.evaluation = None
+
+    # -------- Step 1: Start Interview --------
+    if not st.session_state.interview_started:
+        st.session_state.interview_prompt = st.text_input(
+            "Interview focus (optional)",
+            placeholder="CUDA, GPU architecture, performance optimization"
+        )
+
+        if st.button("🎤 Start Interview", key="start_interview"):
+            with st.spinner("Preparing interview..."):
+                resp = requests.get(
+                    "http://localhost:8000/interview/question",
+                    params={"prompt": st.session_state.interview_prompt}
+                )
+                st.session_state.current_question = resp.json()["question"]
+                st.session_state.interview_started = True
+                st.session_state.evaluation = None
+
+    # -------- Step 2: Ask Question --------
+    if st.session_state.interview_started and st.session_state.current_question:
         st.markdown(f"""
         <div class="card accent">
-        {plan}
+        <b>Interview Question</b><br>
+        {st.session_state.current_question}
         </div>
         """, unsafe_allow_html=True)
 
-# =================================================
-# TAB 2 — INTERVIEW AI
-# =================================================
-with tabs[1]:
-    st.subheader("💬 Ask the Interview AI")
-    st.write("Ask questions and get NVIDIA-style answers.")
+        user_answer = st.text_area(
+            "Your Answer",
+            height=180,
+            key="interview_answer"
+        )
 
-    question = st.text_input(
-        "Interview Question",
-        placeholder="Explain CUDA memory coalescing and why it matters",
-        key="ask_question_input"
-    )
+        # -------- Step 3: Evaluate --------
+        if st.button("✅ Submit Answer", key="submit_answer"):
+            with st.spinner("Evaluating like an NVIDIA interviewer..."):
+                resp = requests.post(
+                    "http://localhost:8000/evaluate",
+                    json={
+                        "question": st.session_state.current_question,
+                        "answer": user_answer
+                    }
+                )
+                st.session_state.evaluation = resp.json()["evaluation"]
 
-    col1, col2 = st.columns([3, 1])
-
-    with col1:
-        ask = st.button("Ask AI", use_container_width=True, key="ask_ai_btn")
-    with col2:
-        clear_ai = st.button("Clear", use_container_width=True, key="clear_ai_btn")
-
-    if clear_ai:
-        st.session_state.pop("ai_answer", None)
-
-    if ask and question:
-        with st.spinner("Thinking like a senior NVIDIA engineer..."):
-            resp = requests.get(
-                f"{API_BASE}/ask",
-                params={"question": question}
-            )
-            st.session_state["ai_answer"] = resp.json()["answer"]
-
-    if "ai_answer" in st.session_state:
+    # -------- Step 4: Show Evaluation --------
+    if st.session_state.evaluation:
         st.markdown("""
-        <div class="card accent">
-        <b>AI Response</b>
+        <div class="card">
+        <b>Evaluation</b>
         </div>
         """, unsafe_allow_html=True)
-        st.write(st.session_state["ai_answer"])
 
-# =================================================
-# TAB 3 — EVALUATION
-# =================================================
-with tabs[2]:
-    st.subheader("📝 Evaluate Your Answer")
-    st.write("Get honest, NVIDIA-style interview feedback.")
+        st.write(st.session_state.evaluation)
 
-    q_eval = st.text_input(
-        "Interview Question",
-        placeholder="Explain CUDA memory hierarchy",
-        key="eval_question_input"
-    )
+        # -------- Step 5: Next Question --------
+        if st.button("➡️ Next Question", key="next_q"):
+            with st.spinner("Generating next question..."):
+                resp = requests.get(
+                    "http://localhost:8000/interview/question",
+                    params={"prompt": st.session_state.interview_prompt}
+                )
+                st.session_state.current_question = resp.json()["question"]
+                st.session_state.evaluation = None
+                st.session_state.interview_answer = ""
 
-    a_eval = st.text_area(
-        "Your Answer",
-        height=180,
-        placeholder="Answer as you would in a real interview...",
-        key="eval_answer_input"
-    )
+# ---------------- PROGRESS ----------------
+with tabs[3]:
+    scores = requests.get(f"{API}/history/scores").json()
 
-    col1, col2 = st.columns([3, 1])
+    if scores:
+        df = pd.DataFrame(scores)
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        st.line_chart(df.set_index("timestamp")["score"])
+    else:
+        st.info("No evaluation data yet.")
+# ---------------- HISTORY ----------------
+with tabs[4]:
+    st.subheader("📜 Interview Chat History")
+    st.write("Review your past interview practice sessions, grouped by date.")
 
-    with col1:
-        eval_btn = st.button("Evaluate Answer", use_container_width=True, key="eval_btn")
-    with col2:
-        clear_eval = st.button("Clear", use_container_width=True, key="clear_eval_btn")
+    try:
+        resp = requests.get("http://localhost:8000/history/chat", timeout=30)
+        data = resp.json()
+    except Exception as e:
+        st.error(f"Failed to load history: {e}")
+        data = []
 
-    if clear_eval:
-        st.session_state.pop("evaluation", None)
+    if not data:
+        st.info("No chat history available yet.")
+    else:
+        df = pd.DataFrame(data)
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df["date"] = df["timestamp"].dt.date
+        df["time"] = df["timestamp"].dt.strftime("%H:%M")
 
-    if eval_btn and q_eval and a_eval:
-        with st.spinner("Evaluating your answer..."):
-            resp = requests.post(
-                f"{API_BASE}/evaluate",
-                json={
-                    "question": q_eval,
-                    "answer": a_eval
-                }
-            )
-            st.session_state["evaluation"] = resp.json()["evaluation"]
+        # Group by date
+        for date, group in df.groupby("date", sort=False):
+            st.markdown(f"### 🗓️ {date}")
 
-    if "evaluation" in st.session_state:
-        st.markdown("""
-        <div class="card accent">
-        <b>Evaluation Result</b>
-        </div>
-        """, unsafe_allow_html=True)
-        st.write(st.session_state["evaluation"])
-
-# -------------------------------------------------
-# Footer
-# -------------------------------------------------
-st.markdown("---")
-st.caption("FastAPI • ChromaDB • Ollama • Streamlit • RAG • Agentic AI")
+            for _, row in group.iterrows():
+                st.markdown(f"""
+                <div class="card accent">
+                <b>🕒 {row['time']}</b><br>
+                <b>Q:</b> {row['question']}<br><br>
+                <b>AI:</b> {row['answer']}
+                </div>
+                """, unsafe_allow_html=True)
 
