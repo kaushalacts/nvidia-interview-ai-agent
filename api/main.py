@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 from agents.interview_agent import answer_question
+from agents.planner_agent import generate_daily_plan
 
 from rag.embed_store import store_article
 
@@ -19,6 +20,13 @@ class Article(BaseModel):
     source: str = "nvidia"
     fetched_at: datetime | None = None
 
+@app.get("/plan/today")
+def daily_plan():
+    plan = generate_daily_plan()
+    return {
+        "date": str(__import__("datetime").date.today()),
+        "plan": plan
+    }
 @app.get("/ask")
 def ask(question: str):
     answer = answer_question(question)
