@@ -90,8 +90,7 @@ Ollama (Local LLM)
 ---
 
 ## 📁 Project Structure
-
-```
+  
 
 nvidia-interview-ai-agent/
 │
@@ -121,7 +120,7 @@ nvidia-interview-ai-agent/
 ├── requirements.txt
 └── README.md
 
-````
+ 
 
 ---
 
