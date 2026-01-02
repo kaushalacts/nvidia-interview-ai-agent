@@ -55,9 +55,10 @@ All components run **locally**, end-to-end.
 - Lightweight and inspectable
 
 ---
----
 
 ## 🏗️ System Architecture
+
+```
 
 Streamlit UI
 ↓
@@ -69,8 +70,8 @@ ChromaDB (Vector Memory)
 ↓
 Ollama (Local LLM)
 
+```
 
- 
 ---
 
 ## 🛠️ Tech Stack
@@ -90,34 +91,37 @@ Ollama (Local LLM)
 
 ## 📁 Project Structure
 
+```
+
 nvidia-interview-ai-agent/
 │
 ├── api/
-│ ├── main.py
-│ ├── database.py
-│ ├── models.py
-│ └── schemas.py
+│   ├── main.py
+│   ├── database.py
+│   ├── models.py
+│   └── schemas.py
 │
 ├── agents/
-│ ├── llm.py
-│ ├── interview_agent.py
-│ ├── planner_agent.py
-│ ├── evaluator_agent.py
-│ └── question_agent.py
+│   ├── llm.py
+│   ├── interview_agent.py
+│   ├── planner_agent.py
+│   ├── evaluator_agent.py
+│   └── question_agent.py
 │
 ├── rag/
-│ ├── embed_store.py
-│ └── retrieve.py
+│   ├── embed_store.py
+│   └── retrieve.py
 │
 ├── ui/
-│ └── app.py
+│   └── app.py
 │
 ├── .streamlit/
-│ └── config.toml
+│   └── config.toml
 │
 ├── requirements.txt
 └── README.md
 
+````
 
 ---
 
@@ -131,76 +135,87 @@ cd nvidia-interview-ai-agent
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+````
 
+---
 
-2️⃣ Start Ollama
+### 2️⃣ Start Ollama
+
+```bash
 ollama pull llama3.1
 ollama serve
+```
 
-3️⃣ Start Backend
+---
+
+### 3️⃣ Start Backend
+
+```bash
 uvicorn api.main:app --reload
+```
 
-4️⃣ Start UI
+---
+
+### 4️⃣ Start UI
+
+```bash
 streamlit run ui/app.py
+```
 
-🧪 Usage
-Daily Plan
+---
 
-Click Generate Plan to get today’s interview focus
+## 🧪 Usage
 
-Interview Mode
+### Daily Plan
 
-Start interview session
+* Click **Generate Plan** to get today’s interview focus
 
-Answer AI-generated questions
+### Interview Mode
 
-Receive evaluation feedback
+* Start interview session
+* Answer AI-generated questions
+* Receive evaluation feedback
+* Continue with next questions
 
-Continue with next questions
+### History & Progress
 
-History & Progress
+* Review date-wise interview history
+* Track improvement via score charts
 
-Review date-wise interview history
+---
 
-Track improvement via score charts
+## ⚖️ Design Decisions
 
-⚖️ Design Decisions
+* Single-user, local-first design
+* No authentication (intentional)
+* Correctness and reasoning prioritized
+* Fast iteration over premature optimization
 
-Single-user, local-first design
+This system is designed as an **internal engineering tool**, not a SaaS product.
 
-No authentication (intentional)
+---
 
-Correctness and reasoning prioritized
+## 🔮 Future Enhancements
 
-Fast iteration over premature optimization
+* Adaptive questioning based on weak areas
+* Structured numeric scoring
+* Topic-specific interview sessions
+* Export history reports
+* Cloud deployment (model-agnostic)
 
-This system is designed as an internal engineering tool, not a SaaS product.
+---
 
-🔮 Future Enhancements
-
-Adaptive questioning based on weak areas
-
-Structured numeric scoring
-
-Topic-specific interview sessions
-
-Export history reports
-
-Cloud deployment (model-agnostic)
-
-🎯 Interview Context
+## 🎯 Interview Context
 
 This project demonstrates:
 
-Agentic AI design
+* Agentic AI design
+* Retrieval-augmented generation
+* Feedback loops for skill improvement
+* Practical UI integration
+* Engineering trade-off reasoning
 
-Retrieval-augmented generation
+It reflects system-level thinking expected at **NVIDIA**.
 
-Feedback loops for skill improvement
-
-Practical UI integration
-
-Engineering trade-off reasoning
-
-It reflects system-level thinking expected at NVIDIA.
-
+ 
+ 
