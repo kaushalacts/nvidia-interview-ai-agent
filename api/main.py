@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from datetime import datetime
 import json
 from pathlib import Path
+from agents.interview_agent import answer_question
 
 from rag.embed_store import store_article
 
@@ -18,7 +19,13 @@ class Article(BaseModel):
     source: str = "nvidia"
     fetched_at: datetime | None = None
 
-@app.get("/")
+@app.get("/ask")
+def ask(question: str):
+    answer = answer_question(question)
+    return {
+        "question": question,
+        "answer": answer
+    }
 def root():
     return {"status": "NVIDIA Interview AI Agent running"}
 

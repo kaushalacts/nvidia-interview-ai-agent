@@ -1,14 +1,46 @@
-# nvidia-interview-ai-agent
-A  unified autonomous AI system using n8n and agentic LLMs.
- It continuously scrapes NVIDIA engineering content, stores it in a RAG system, adapts my daily interview preparation, simulates interviews, evaluates responses, and delivers daily intelligence via email and a web dashboard
+## 🚀 Project Status
 
+This project builds an **AI-powered interview preparation agent** focused on NVIDIA-level system and GPU concepts.
 
-## ✅ Current Status
+### ✅ Completed Milestones
 
-- [x] FastAPI backend
-- [x] n8n ingestion pipeline
-- [x] Persistent article storage
-- [x] ChromaDB vector memory
+- [x] FastAPI backend foundation
+- [x] Automated ingestion via n8n
+- [x] Persistent article storage (JSON)
+- [x] ChromaDB vector database
 - [x] RAG-based semantic retrieval
-- [ ] Interview AI agent (in progress)
+- [x] Data-quality safe ingestion pipeline
+- [x] Local LLM integration using Ollama
+- [x] **Interview AI Agent (RAG + LLM)** ✅
+
+---
+
+## 🧠 System Architecture
+
+n8n (Automation / Scraping)
+↓
+FastAPI (/ingest)
+↓
+Persistent Storage (JSON)
+↓
+ChromaDB (Vector Memory)
+↓
+RAG Retrieval
+↓
+Ollama (Local LLM)
+↓
+Interview AI Agent (/ask)
+
+
+[200~
+---
+
+## 🔍 Example Usage
+
+### Ask an Interview Question
+
+```bash
+curl --get \
+  --data-urlencode "question=Explain CUDA optimization techniques" \
+  http://localhost:8000/ask
 
