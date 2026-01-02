@@ -93,29 +93,28 @@ Ollama (Local LLM)
   
 
 nvidia-interview-ai-agent/
-│
 ├── api/
-│   ├── main.py
-│   ├── database.py
-│   ├── models.py
-│   └── schemas.py
-
+│ ├── main.py
+│ ├── database.py
+│ ├── models.py
+│ └── schemas.py
+│
 ├── agents/
-│   ├── llm.py
-│   ├── interview_agent.py
-│   ├── planner_agent.py
-│   ├── evaluator_agent.py
-│   └── question_agent.py
- 
+│ ├── llm.py
+│ ├── interview_agent.py
+│ ├── planner_agent.py
+│ ├── evaluator_agent.py
+│ └── question_agent.py
+│
 ├── rag/
-│   ├── embed_store.py
-│   └── retrieve.py
+│ ├── embed_store.py
+│ └── retrieve.py
 │
 ├── ui/
-│   └── app.py
+│ └── app.py
 │
 ├── .streamlit/
-   └── config.toml
+│ └── config.toml
 │
 ├── requirements.txt
 └── README.md
