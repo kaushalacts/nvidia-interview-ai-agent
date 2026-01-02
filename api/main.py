@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from agents.interview_agent import answer_question
 from agents.planner_agent import generate_daily_plan
+from agents.evaluator_agent import evaluate_answer
+from pydantic import BaseModel
 
 from rag.embed_store import store_article
 
@@ -20,6 +22,17 @@ class Article(BaseModel):
     source: str = "nvidia"
     fetched_at: datetime | None = None
 
+class EvaluationRequest(BaseModel):
+    question: str
+    answer: str
+
+@app.post("/evaluate")
+def evaluate(req: EvaluationRequest):
+    feedback = evaluate_answer(req.question, req.answer)
+    return {
+        "question": req.question,
+        "evaluation": feedback
+    }
 @app.get("/plan/today")
 def daily_plan():
     plan = generate_daily_plan()
