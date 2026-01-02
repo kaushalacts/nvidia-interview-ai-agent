@@ -1,0 +1,12 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Data & Vector DB
+data/
+rag/chroma_db/
+
+# OS
+.DS_Store
+
