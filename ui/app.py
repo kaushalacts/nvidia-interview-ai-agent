@@ -8,7 +8,7 @@ if "current_question" not in st.session_state:
 if "evaluation_result" not in st.session_state:
     st.session_state.evaluation_result = None
 
-API = "http://localhost:8000"
+BACKEND_URL = "http://backend:8000"
 
 st.set_page_config(
     page_title="NVIDIA Interview AI Agent",
@@ -209,4 +209,5 @@ with tabs[4]:
                 <b>AI:</b> {row['answer']}
                 </div>
                 """, unsafe_allow_html=True)
+
 
