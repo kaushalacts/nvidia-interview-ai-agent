@@ -1,0 +1,48 @@
+# =========================
+# BUILDER
+# =========================
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt ./
+
+# 🔒 HARD-PIN CPU TORCH ONLY
+RUN pip install --no-cache-dir \
+    torch==2.2.2+cpu \
+    torchvision==0.17.2+cpu \
+    torchaudio==2.2.2+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# 🔒 Install sentence-transformers WITHOUT re-resolving torch
+RUN pip install --no-cache-dir \
+    sentence-transformers==2.2.2 \
+    --no-deps
+
+# Install remaining deps
+RUN pip install --no-cache-dir -r requirements.txt
+
+
+# =========================
+# RUNTIME (DISTROLESS)
+# =========================
+FROM gcr.io/distroless/python3-debian12
+
+WORKDIR /app
+
+# Copy only runtime python
+COPY --from=builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+COPY --from=builder /usr/local/bin/python /usr/local/bin/python
+
+COPY api ./api
+
+USER nonroot
+
+EXPOSE 8000
+
+CMD ["-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
