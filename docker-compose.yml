@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  backend:
+    image: interview-backend:prod
+    container_name: backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - chromadb
+    environment:
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    volumes:
+      - chroma_data:/chroma
+    ports:
+      - "8001:8000"
+
+volumes:
+  chroma_data:
+
