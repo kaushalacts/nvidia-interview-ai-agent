@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   backend:
     build:
@@ -9,6 +11,12 @@ services:
       - "8000:8000"
     volumes:
       - backend_sqlite:/data
+    environment:
+      # 🔑 Backend talks to HOST Ollama (stable)
+      LLM_BASE_URL: http://host.docker.internal:11434
+      LLM_MODEL: phi3:mini
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - chromadb
 

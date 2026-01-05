@@ -12,7 +12,7 @@ MAX_RETRIES = 5
 INITIAL_BACKOFF = 1.0  # seconds
 
 # =========================================================
-# API HELPERS (WITH RETRY + BACKOFF)
+# API HELPERS (RETRY + BACKOFF)
 # =========================================================
 def api_request(method, path, json=None, params=None):
     url = f"{API}{path}"
@@ -33,9 +33,8 @@ def api_request(method, path, json=None, params=None):
         except Exception as e:
             if attempt == MAX_RETRIES:
                 st.error(
-                    f"❌ Backend unavailable after {MAX_RETRIES} attempts.\n\n"
-                    f"Endpoint: `{path}`\n\n"
-                    f"Error: {e}"
+                    f"❌ Backend unavailable after {MAX_RETRIES} attempts\n\n"
+                    f"Endpoint: `{path}`\n\nError: {e}"
                 )
                 return None
 
@@ -63,19 +62,22 @@ st.title("🧠 NVIDIA Interview AI Agent")
 st.caption("Plan • Practice • Evaluate — NVIDIA-style")
 
 # =========================================================
-# SESSION STATE INIT
+# SESSION STATE INITIALIZATION (CRITICAL)
 # =========================================================
-defaults = {
+DEFAULTS = {
     "plan": None,
-    "ask_clicked": False,
+    "generate_plan": False,
+
+    "ask_ai": False,
     "ai_answer": None,
+
     "interview_started": False,
     "interview_prompt": "",
     "current_question": None,
     "evaluation": None,
 }
 
-for k, v in defaults.items():
+for k, v in DEFAULTS.items():
     st.session_state.setdefault(k, v)
 
 # =========================================================
@@ -86,16 +88,20 @@ tabs = st.tabs(
 )
 
 # =========================================================
-# TAB 1: PLAN
+# TAB 1: DAILY PLAN
 # =========================================================
 with tabs[0]:
     st.subheader("🎯 Daily Study Plan")
 
-    if st.button("Generate Plan"):
+    if st.button("Generate Plan", key="generate_plan_btn"):
+        st.session_state.generate_plan = True
+
+    if st.session_state.generate_plan:
         with st.spinner("Generating plan..."):
             resp = api_get("/plan/today")
             if resp:
                 st.session_state.plan = resp.get("plan")
+        st.session_state.generate_plan = False  # reset trigger
 
     if st.session_state.plan:
         st.markdown(st.session_state.plan)
@@ -106,20 +112,24 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("💬 Ask Interview AI")
 
-    question = st.text_input("Interview Question")
+    question = st.text_input("Interview Question", key="ask_input")
 
-    if st.button("Ask AI"):
+    if st.button("Ask AI", key="ask_ai_btn"):
+        st.session_state.ask_ai = True
+
+    if st.session_state.ask_ai:
         with st.spinner("Calling interview agent..."):
             resp = api_post("/ask", json={"question": question})
             if resp:
                 st.session_state.ai_answer = resp.get("answer")
+        st.session_state.ask_ai = False
 
     if st.session_state.ai_answer:
         st.success("AI Answer")
         st.write(st.session_state.ai_answer)
 
 # =========================================================
-# TAB 3: INTERVIEW MODE
+# TAB 3: INTERVIEW MODE (AGENT AS INTERVIEWER)
 # =========================================================
 with tabs[2]:
     st.subheader("📝 Interview Mode (Agent as Interviewer)")
@@ -129,9 +139,10 @@ with tabs[2]:
         st.session_state.interview_prompt = st.text_input(
             "Interview focus (optional)",
             placeholder="CUDA, GPU architecture, performance optimization",
+            key="interview_focus",
         )
 
-        if st.button("🎤 Start Interview"):
+        if st.button("🎤 Start Interview", key="start_interview_btn"):
             with st.spinner("Preparing interview..."):
                 resp = api_get(
                     "/interview/question",
@@ -153,9 +164,13 @@ with tabs[2]:
             unsafe_allow_html=True,
         )
 
-        user_answer = st.text_area("Your Answer", height=180)
+        user_answer = st.text_area(
+            "Your Answer",
+            height=180,
+            key="interview_answer",
+        )
 
-        if st.button("✅ Submit Answer"):
+        if st.button("✅ Submit Answer", key="submit_answer_btn"):
             with st.spinner("Evaluating like an NVIDIA interviewer..."):
                 resp = api_post(
                     "/evaluate",
@@ -174,7 +189,7 @@ with tabs[2]:
         )
         st.write(st.session_state.evaluation)
 
-        if st.button("➡️ Next Question"):
+        if st.button("➡️ Next Question", key="next_question_btn"):
             with st.spinner("Generating next question..."):
                 resp = api_get(
                     "/interview/question",
@@ -183,6 +198,7 @@ with tabs[2]:
                 if resp:
                     st.session_state.current_question = resp.get("question")
                     st.session_state.evaluation = None
+                    st.session_state.interview_answer = ""
 
 # =========================================================
 # TAB 4: PROGRESS
