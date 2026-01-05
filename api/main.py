@@ -19,6 +19,10 @@ def get_db():
     finally:
         db.close()
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.get("/interview/question")
 def get_interview_question():

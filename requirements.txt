@@ -1,12 +1,33 @@
-sentence-transformers==2.2.2
+# ---------- ABI SAFETY ----------
+numpy<2
+
+# ---------- API ----------
 fastapi
 uvicorn[standard]
-sqlalchemy
-chromadb
 pydantic
 requests
 python-dotenv
+sqlalchemy
 pandas
+
+# ---------- TORCH (CPU) ----------
+torch==2.2.2+cpu
+torchvision==0.17.2+cpu
+torchaudio==2.2.2+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# ---------- HUGGINGFACE (COMPATIBLE SET) ----------
+transformers
+sentence-transformers
+huggingface_hub
+
+# ---------- LANGCHAIN ----------
 langchain
+langchain-core
+langchain-community
 langchain-huggingface
+langchain-chroma
+
+# ---------- VECTOR DB ----------
+chromadb
 

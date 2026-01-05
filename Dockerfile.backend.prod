@@ -1,48 +1,36 @@
 # =========================
-# BUILDER STAGE
+# BUILDER
 # =========================
 FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y build-essential \
+ && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-
-# ---- HARD PIN CPU TORCH ----
-RUN pip install --no-cache-dir \
-    torch==2.2.2+cpu \
-    torchvision==0.17.2+cpu \
-    torchaudio==2.2.2+cpu \
-    --index-url https://download.pytorch.org/whl/cpu
-
-# ---- sentence-transformers WITHOUT torch re-resolution ----
-RUN pip install --no-cache-dir \
-    sentence-transformers==2.2.2 \
-    --no-deps
-
-# ---- Remaining deps ----
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 
 # =========================
-# RUNTIME STAGE (DISTROLESS)
+# RUNTIME (DISTROLESS)
 # =========================
 FROM gcr.io/distroless/python3-debian12
 
 WORKDIR /app
 
-# ---- Copy python dependencies ----
+# ---- Python deps ----
 COPY --from=builder \
   /usr/local/lib/python3.11/site-packages \
   /usr/local/lib/python3.11/site-packages
 
-# ---- Copy application code ----
-COPY api ./api
-COPY agents ./agents
-COPY rag ./rag
+# ---- App code (owned by nonroot) ----
+COPY --chown=nonroot:nonroot api ./api
+COPY --chown=nonroot:nonroot agents ./agents
+COPY --chown=nonroot:nonroot rag ./rag
+
+# ✅ Create writable SQLite directory WITHOUT RUN
+COPY --chown=nonroot:nonroot --from=builder /tmp /data
 
 # ---- Python path ----
 ENV PYTHONPATH=/app:/usr/local/lib/python3.11/site-packages
