@@ -202,6 +202,10 @@ This system is designed as an **internal engineering tool**, not a SaaS product.
 * Cloud deployment (model-agnostic)
 
 ---
+Added dockerfile with docker compose -produciton grade. 
+----
+
+---
 
 ## 🎯 Interview Context
 
