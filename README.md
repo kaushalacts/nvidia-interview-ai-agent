@@ -204,7 +204,8 @@ This system is designed as an **internal engineering tool**, not a SaaS product.
 ---
 Added dockerfile with docker compose -produciton grade. 
 ----
-
+Next target--
+Building and optimising the CI/CD pipelines for this . S
 ---
 
 ## 🎯 Interview Context
