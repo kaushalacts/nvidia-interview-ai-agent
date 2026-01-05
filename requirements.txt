@@ -1,11 +1,12 @@
-# DO NOT include torch here
 sentence-transformers==2.2.2
 fastapi
-uvicorn
+uvicorn[standard]
 sqlalchemy
 chromadb
 pydantic
 requests
 python-dotenv
 pandas
-uvicorn[standard]
+langchain
+langchain-huggingface
+
