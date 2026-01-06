@@ -1,6 +1,7 @@
-version: "3.9"
-
 services:
+  # =========================
+  # BACKEND (FastAPI + RAG)
+  # =========================
   backend:
     build:
       context: .
@@ -12,14 +13,20 @@ services:
     volumes:
       - backend_sqlite:/data
     environment:
-      # 🔑 Backend talks to HOST Ollama (stable)
-      LLM_BASE_URL: http://host.docker.internal:11434
-      LLM_MODEL: phi3:mini
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      LLM_BASE_URL: http://ollama:11434
+      LLM_MODEL: tinyllama:1.1b
     depends_on:
       - chromadb
+      - ollama
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    restart: unless-stopped
 
+  # =========================
+  # VECTOR DB (Chroma)
+  # =========================
   chromadb:
     image: chromadb/chroma:latest
     container_name: chromadb
@@ -27,7 +34,62 @@ services:
       - "8001:8000"
     volumes:
       - chroma_data:/chroma
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    restart: unless-stopped
 
+  # =========================
+  # LLM RUNTIME (Ollama)
+  # =========================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    command: >
+      sh -c "
+      ollama serve &
+      sleep 5 &&
+      ollama pull tinyllama:1.1b &&
+      wait
+      "
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    restart: unless-stopped
+
+  # =========================
+  # AUTOMATION (n8n)
+  # =========================
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+      - WEBHOOK_URL=http://localhost:5678
+      - GENERIC_TIMEZONE=Asia/Kolkata
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    restart: unless-stopped
+
+  # =========================
+  # UI (Streamlit)
+  # =========================
   ui:
     build:
       context: .
@@ -40,8 +102,17 @@ services:
       API: http://backend:8000
     depends_on:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    restart: unless-stopped
 
+# =========================
+# VOLUMES
+# =========================
 volumes:
   chroma_data:
   backend_sqlite:
-
+  ollama_data:
+  n8n_data:
