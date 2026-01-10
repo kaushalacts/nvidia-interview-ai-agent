@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, DateTime
+from sqlalchemy import Column, Integer, Text, DateTime, String
 from datetime import datetime
 from api.database import Base
 
@@ -19,3 +19,10 @@ class Evaluation(Base):
     feedback = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
+class DailyBlog(Base):
+    __tablename__ = "daily_blogs"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(200))
+    content = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)

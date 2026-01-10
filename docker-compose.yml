@@ -1,40 +1,22 @@
 services:
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend.prod
+      context: ./backend
+      dockerfile: Dockerfile
     image: interview-backend:prod
     container_name: interview-backend
     ports:
       - "8000:8000"
     volumes:
       - backend_sqlite:/data
+      - chroma_data:/app/rag/chroma_db
     environment:
-      LLM_BASE_URL: http://ollama:11434
-      LLM_MODEL: tinyllama:1.1b
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: phi3:mini
     depends_on:
-      - chromadb
       - ollama
-    deploy:
-      resources:
-        limits:
-          memory: 1g
     restart: unless-stopped
 
-  chromadb:
-    image: chromadb/chroma:latest
-    container_name: chromadb
-    ports:
-      - "8001:8000"
-    volumes:
-      - chroma_data:/chroma
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-    restart: unless-stopped
-
-  # ✅ FIXED OLLAMA SERVICE
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -43,10 +25,6 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     command: serve
-    deploy:
-      resources:
-        limits:
-          memory: 2g
     restart: unless-stopped
 
   n8n:
@@ -63,15 +41,11 @@ services:
       - n8n_data:/home/node/.n8n
     depends_on:
       - backend
-    deploy:
-      resources:
-        limits:
-          memory: 512m
     restart: unless-stopped
 
   ui:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile.ui
     image: interview-ui:latest
     container_name: interview-ui
@@ -81,15 +55,10 @@ services:
       API: http://backend:8000
     depends_on:
       - backend
-    deploy:
-      resources:
-        limits:
-          memory: 512m
     restart: unless-stopped
 
 volumes:
-  chroma_data:
   backend_sqlite:
+  chroma_data:
   ollama_data:
   n8n_data:
-

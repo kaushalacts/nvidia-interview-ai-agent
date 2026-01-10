@@ -75,6 +75,9 @@ DEFAULTS = {
     "interview_prompt": "",
     "current_question": None,
     "evaluation": None,
+
+    # 🆕 Blog state
+    "latest_blog": None,
 }
 
 for k, v in DEFAULTS.items():
@@ -84,7 +87,7 @@ for k, v in DEFAULTS.items():
 # TABS
 # =========================================================
 tabs = st.tabs(
-    ["🎯 Plan", "💬 Interview", "📝 Interview Mode", "📊 Progress", "📜 History"]
+    ["🎯 Plan", "💬 Interview", "📝 Interview Mode", "📊 Progress", "📜 History", "📰 Blogs"]
 )
 
 # =========================================================
@@ -243,3 +246,28 @@ with tabs[4]:
                     unsafe_allow_html=True,
                 )
 
+# =========================================================
+# TAB 6: BLOGS (🆕 ADDED – SAFE)
+# =========================================================
+with tabs[5]:
+    st.subheader("📰 Daily DevOps Blogs")
+
+    if st.button("Generate Today's Blog"):
+        with st.spinner("Generating senior DevOps blog..."):
+            resp = api_get("/blog/daily")
+            if resp:
+                st.session_state.latest_blog = resp
+
+    if st.session_state.latest_blog:
+        st.markdown(f"## {st.session_state.latest_blog['title']}")
+        st.write(st.session_state.latest_blog["content"])
+
+    st.divider()
+    st.subheader("📚 Blog History")
+
+    blogs = api_get("/blog/history")
+    if blogs:
+        for blog in blogs:
+            st.markdown(f"### {blog['title']}")
+            st.caption(blog["created_at"])
+            st.write(blog["content"])

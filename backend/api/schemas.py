@@ -7,3 +7,6 @@ class EvalRequest(BaseModel):
     question: str
     answer: str
 
+class BlogResponse(BaseModel):
+    title: str
+    content: str
