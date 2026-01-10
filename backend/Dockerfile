@@ -1,44 +1,43 @@
 # =========================
-# BUILDER
+# BUILDER STAGE
 # =========================
 FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
+# Minimal build deps
 RUN apt-get update \
  && apt-get install -y --no-install-recommends gcc \
  && rm -rf /var/lib/apt/lists/*
 
+# Install Python deps into virtual env-style path
 COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt \
- && rm -rf /root/.cache/pip \
- && find /usr/local/lib/python3.11/site-packages \
-    -type d \( -name "tests" -o -name "__pycache__" \) -exec rm -rf {} + \
- && find /usr/local/lib/python3.11/site-packages \
-    -type f \( -name "*.pyc" -o -name "*.pyo" \) -delete
-
-RUN mkdir -p /runtime/app/rag/chroma_db /runtime/data
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # =========================
-# RUNTIME
+# RUNTIME STAGE
 # =========================
-FROM gcr.io/distroless/python3-debian12
+FROM python:3.11-slim
+
+# Runtime hygiene
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY --from=builder /usr/local/lib/python3.11/site-packages \
-                    /usr/local/lib/python3.11/site-packages
+# Copy only installed deps from builder
+COPY --from=builder /install /usr/local
 
+# App code
 COPY api ./api
 COPY agents ./agents
 COPY rag ./rag
 
-COPY --from=builder /runtime/data /data
-COPY --from=builder /runtime/app/rag/chroma_db /app/rag/chroma_db
+# Runtime dirs
+RUN mkdir -p /data /app/rag/chroma_db
 
 ENV PYTHONPATH=/app
-USER nonroot
 EXPOSE 8000
 
-CMD ["-m", "uvicorn", "api.main:app", "--host=0.0.0.0", "--port=8000"]
+# Start FastAPI
+CMD ["uvicorn", "api.main:app", "--host=0.0.0.0", "--port=8000"]

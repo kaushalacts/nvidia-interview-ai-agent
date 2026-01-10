@@ -12,6 +12,63 @@ MAX_RETRIES = 5
 INITIAL_BACKOFF = 1.0  # seconds
 
 # =========================================================
+# THEME STATE (🆕)
+# =========================================================
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"  # default theme
+
+# =========================================================
+# THEME CSS (🆕)
+# =========================================================
+def apply_theme(theme: str):
+    if theme == "dark":
+        st.markdown(
+            """
+            <style>
+            body, .stApp {
+                background-color: #0E1117;
+                color: #FAFAFA;
+            }
+            .stButton > button {
+                background-color: #76B900;
+                color: black;
+                border-radius: 8px;
+            }
+            .stTextInput input,
+            .stTextArea textarea {
+                background-color: #161B22;
+                color: #FAFAFA;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <style>
+            body, .stApp {
+                background-color: #FFFFFF;
+                color: #000000;
+            }
+            .stButton > button {
+                background-color: #0E6FFF;
+                color: white;
+                border-radius: 8px;
+            }
+            .stTextInput input,
+            .stTextArea textarea {
+                background-color: #F2F2F2;
+                color: #000000;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+apply_theme(st.session_state.theme)
+
+# =========================================================
 # API HELPERS (RETRY + BACKOFF)
 # =========================================================
 def api_request(method, path, json=None, params=None):
@@ -58,25 +115,39 @@ st.set_page_config(
     layout="wide",
 )
 
+# =========================================================
+# SIDEBAR (🆕 THEME TOGGLE)
+# =========================================================
+with st.sidebar:
+    st.title("⚙️ Settings")
+
+    if st.session_state.theme == "dark":
+        if st.button("☀️ Switch to Light Mode"):
+            st.session_state.theme = "light"
+            st.experimental_rerun()
+    else:
+        if st.button("🌙 Switch to Dark Mode"):
+            st.session_state.theme = "dark"
+            st.experimental_rerun()
+
+# =========================================================
+# HEADER
+# =========================================================
 st.title("🧠 NVIDIA Interview AI Agent")
 st.caption("Plan • Practice • Evaluate — NVIDIA-style")
 
 # =========================================================
-# SESSION STATE INITIALIZATION (CRITICAL)
+# SESSION STATE INITIALIZATION
 # =========================================================
 DEFAULTS = {
     "plan": None,
     "generate_plan": False,
-
     "ask_ai": False,
     "ai_answer": None,
-
     "interview_started": False,
     "interview_prompt": "",
     "current_question": None,
     "evaluation": None,
-
-    # 🆕 Blog state
     "latest_blog": None,
 }
 
@@ -96,15 +167,11 @@ tabs = st.tabs(
 with tabs[0]:
     st.subheader("🎯 Daily Study Plan")
 
-    if st.button("Generate Plan", key="generate_plan_btn"):
-        st.session_state.generate_plan = True
-
-    if st.session_state.generate_plan:
+    if st.button("Generate Plan"):
         with st.spinner("Generating plan..."):
             resp = api_get("/plan/today")
             if resp:
                 st.session_state.plan = resp.get("plan")
-        st.session_state.generate_plan = False  # reset trigger
 
     if st.session_state.plan:
         st.markdown(st.session_state.plan)
@@ -115,24 +182,20 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("💬 Ask Interview AI")
 
-    question = st.text_input("Interview Question", key="ask_input")
+    question = st.text_input("Interview Question")
 
-    if st.button("Ask AI", key="ask_ai_btn"):
-        st.session_state.ask_ai = True
-
-    if st.session_state.ask_ai:
+    if st.button("Ask AI"):
         with st.spinner("Calling interview agent..."):
             resp = api_post("/ask", json={"question": question})
             if resp:
                 st.session_state.ai_answer = resp.get("answer")
-        st.session_state.ask_ai = False
 
     if st.session_state.ai_answer:
         st.success("AI Answer")
         st.write(st.session_state.ai_answer)
 
 # =========================================================
-# TAB 3: INTERVIEW MODE (AGENT AS INTERVIEWER)
+# TAB 3: INTERVIEW MODE
 # =========================================================
 with tabs[2]:
     st.subheader("📝 Interview Mode (Agent as Interviewer)")
@@ -142,66 +205,33 @@ with tabs[2]:
         st.session_state.interview_prompt = st.text_input(
             "Interview focus (optional)",
             placeholder="CUDA, GPU architecture, performance optimization",
-            key="interview_focus",
         )
 
-        if st.button("🎤 Start Interview", key="start_interview_btn"):
-            with st.spinner("Preparing interview..."):
-                resp = api_get(
-                    "/interview/question",
-                    params={"prompt": st.session_state.interview_prompt},
-                )
-                if resp:
-                    st.session_state.current_question = resp.get("question")
-                    st.session_state.interview_started = True
-                    st.session_state.evaluation = None
+        if st.button("🎤 Start Interview"):
+            resp = api_get("/interview/question")
+            if resp:
+                st.session_state.current_question = resp.get("question")
+                st.session_state.interview_started = True
 
-    if st.session_state.interview_started and st.session_state.current_question:
-        st.markdown(
-            f"""
-            <div class="card accent">
-            <b>Interview Question</b><br>
-            {st.session_state.current_question}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    if st.session_state.current_question:
+        st.markdown(f"**Interview Question:** {st.session_state.current_question}")
 
-        user_answer = st.text_area(
-            "Your Answer",
-            height=180,
-            key="interview_answer",
-        )
+        user_answer = st.text_area("Your Answer", height=180)
 
-        if st.button("✅ Submit Answer", key="submit_answer_btn"):
-            with st.spinner("Evaluating like an NVIDIA interviewer..."):
-                resp = api_post(
-                    "/evaluate",
-                    json={
-                        "question": st.session_state.current_question,
-                        "answer": user_answer,
-                    },
-                )
-                if resp:
-                    st.session_state.evaluation = resp.get("evaluation")
+        if st.button("Submit Answer"):
+            resp = api_post(
+                "/evaluate",
+                json={
+                    "question": st.session_state.current_question,
+                    "answer": user_answer,
+                },
+            )
+            if resp:
+                st.session_state.evaluation = resp.get("evaluation")
 
     if st.session_state.evaluation:
-        st.markdown(
-            "<div class='card'><b>Evaluation</b></div>",
-            unsafe_allow_html=True,
-        )
+        st.subheader("Evaluation")
         st.write(st.session_state.evaluation)
-
-        if st.button("➡️ Next Question", key="next_question_btn"):
-            with st.spinner("Generating next question..."):
-                resp = api_get(
-                    "/interview/question",
-                    params={"prompt": st.session_state.interview_prompt},
-                )
-                if resp:
-                    st.session_state.current_question = resp.get("question")
-                    st.session_state.evaluation = None
-                    st.session_state.interview_answer = ""
 
 # =========================================================
 # TAB 4: PROGRESS
@@ -247,7 +277,7 @@ with tabs[4]:
                 )
 
 # =========================================================
-# TAB 6: BLOGS (🆕 ADDED – SAFE)
+# TAB 6: BLOGS
 # =========================================================
 with tabs[5]:
     st.subheader("📰 Daily DevOps Blogs")
