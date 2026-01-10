@@ -15,6 +15,6 @@ rag/chroma_db/
 
 # Docker
 *.log
-
+.env
 # OS
 .DS_Store

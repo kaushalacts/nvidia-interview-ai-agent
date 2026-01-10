@@ -1,9 +1,6 @@
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: interview-backend:prod
+    image: thehiddenboy143/nvidia-interview-backend:1.0.0
     container_name: interview-backend
     ports:
       - "8000:8000"
@@ -11,20 +8,20 @@ services:
       - backend_sqlite:/data
       - chroma_data:/app/rag/chroma_db
     environment:
-      OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: phi3:mini
-    depends_on:
-      - ollama
-    restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    command: serve
+      OLLAMA_HOST: http://host.docker.internal:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     restart: unless-stopped
 
   n8n:
@@ -33,32 +30,40 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=admin123
-      - GENERIC_TIMEZONE=Asia/Kolkata
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+      GENERIC_TIMEZONE: ${N8N_TIMEZONE}
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   ui:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.ui
-    image: interview-ui:latest
+    image: thehiddenboy143/nvidia-interview-ui:1.0.0
     container_name: interview-ui
     ports:
       - "8501:8501"
     environment:
       API: http://backend:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8501"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:
   backend_sqlite:
   chroma_data:
-  ollama_data:
   n8n_data:

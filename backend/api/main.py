@@ -12,6 +12,11 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="NVIDIA Interview AI Agent")
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 def get_db():
     db = SessionLocal()
     try:
