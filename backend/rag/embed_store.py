@@ -1,20 +1,18 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+embeddings = OllamaEmbeddings(
+    base_url="http://ollama:11434",
+    model="nomic-embed-text"
 )
 
-CHROMA_DIR = "rag/chroma_db"
+CHROMA_DIR = "/app/rag/chroma_db"
 
 def store_article(title: str, content: str, metadata: dict):
     doc = Document(
         page_content=content,
-        metadata={
-            "title": title,
-            **metadata
-        }
+        metadata={"title": title, **metadata}
     )
 
     vectordb = Chroma(
@@ -23,4 +21,3 @@ def store_article(title: str, content: str, metadata: dict):
     )
 
     vectordb.add_documents([doc])
-

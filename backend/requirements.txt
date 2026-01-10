@@ -1,26 +1,15 @@
+# ---------- CORE ----------
 numpy<2
 fastapi
-uvicorn[standard]
+uvicorn
 pydantic
 requests
 python-dotenv
 sqlalchemy
 pandas
-
-torch==2.2.2+cpu
-torchvision==0.17.2+cpu
-torchaudio==2.2.2+cpu
---extra-index-url https://download.pytorch.org/whl/cpu
-
-transformers
-sentence-transformers
-huggingface_hub
-
-langchain
-langchain-core
-langchain-community
-langchain-huggingface
-langchain-chroma
-
-chromadb
 passlib[bcrypt]
+
+# ---------- RAG / LANGCHAIN ----------
+langchain-community
+langchain-chroma
+chromadb

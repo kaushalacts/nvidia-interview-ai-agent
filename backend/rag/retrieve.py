@@ -1,10 +1,11 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain_chroma import Chroma
 
-CHROMA_DIR = "rag/chroma_db"
+CHROMA_DIR = "/app/rag/chroma_db"
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+embeddings = OllamaEmbeddings(
+    base_url="http://ollama:11434",
+    model="nomic-embed-text"
 )
 
 def query_articles(query: str, k: int = 3):
@@ -17,9 +18,8 @@ def query_articles(query: str, k: int = 3):
 
     return [
         {
-            "content": doc.page_content[:500],  # preview
+            "content": doc.page_content[:500],
             "metadata": doc.metadata
         }
         for doc in results
     ]
-
