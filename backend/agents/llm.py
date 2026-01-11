@@ -1,52 +1,46 @@
-import os
-import requests
 import time
+import requests
+import os
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
-MODEL = os.getenv("OLLAMA_MODEL", "phi3:mini")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi3:mini")
 
-OLLAMA_GENERATE_URL = f"{OLLAMA_HOST}/api/generate"
-
-SESSION = requests.Session()  # reuse connection
+MAX_RETRIES = 6
+INITIAL_DELAY = 2  # seconds
 
 
 def generate_answer(prompt: str) -> str:
-    payload = {
-        "model": MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "num_ctx": 2048,      # VERY IMPORTANT (reduce memory)
-            "num_predict": 512,   # cap output
-            "temperature": 0.7,
-        },
-    }
-
     last_error = None
+    delay = INITIAL_DELAY
 
-    for attempt in range(1, 6):  # more retries
+    for attempt in range(1, MAX_RETRIES + 1):
         try:
-            resp = SESSION.post(
-                OLLAMA_GENERATE_URL,
-                json=payload,
-                timeout=180,
+            response = requests.post(
+                f"{OLLAMA_HOST}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                },
+                timeout=120,
             )
 
-            # Ollama returns 404 while runner is warming — retry
-            if resp.status_code == 404:
-                raise RuntimeError("Ollama runner warming up")
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("response", "").strip()
 
-            resp.raise_for_status()
-            data = resp.json()
-
-            if "response" not in data:
-                raise RuntimeError(f"Invalid Ollama response: {data}")
-
-            return data["response"]
+            last_error = response.text
 
         except Exception as e:
-            last_error = e
-            time.sleep(3 * attempt)  # exponential backoff
+            last_error = str(e)
 
-    raise RuntimeError(f"Ollama generation failed after retries: {last_error}")
+        # 🟡 Ollama warming up → wait and retry
+        time.sleep(delay)
+        delay *= 2
 
+    # ✅ Graceful fallback instead of crashing API
+    return (
+        "⚠️ AI engine is warming up.\n\n"
+        "Please retry in a few seconds. "
+        "This usually happens only after startup."
+    )

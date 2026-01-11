@@ -1,17 +1,16 @@
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
-CHROMA_DIR = "/app/rag/chroma_db"
+CHROMA_DIR = "rag/chroma_db"
 
-embeddings = OllamaEmbeddings(
-    base_url="http://ollama:11434",
-    model="nomic-embed-text"
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
 def query_articles(query: str, k: int = 3):
     vectordb = Chroma(
         persist_directory=CHROMA_DIR,
-        embedding_function=embeddings
+        embedding_function=embeddings,
     )
 
     results = vectordb.similarity_search(query, k=k)
@@ -19,7 +18,7 @@ def query_articles(query: str, k: int = 3):
     return [
         {
             "content": doc.page_content[:500],
-            "metadata": doc.metadata
+            "metadata": doc.metadata,
         }
         for doc in results
     ]
