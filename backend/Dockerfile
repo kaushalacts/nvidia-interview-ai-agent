@@ -5,6 +5,7 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
+<<<<<<< Updated upstream
 # ---- System deps required for sentence-transformers / numpy / torch ----
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
@@ -23,6 +24,20 @@ RUN pip install --upgrade pip
 
 # Install into isolated prefix
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+=======
+# Minimal native deps (required by chromadb / sqlite)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libstdc++6 \
+    libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps into isolated path
+COPY requirements.txt .
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+>>>>>>> Stashed changes
 
 
 # =========================
@@ -30,13 +45,17 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # =========================
 FROM python:3.11-slim
 
+<<<<<<< Updated upstream
 # ---- Runtime hygiene ----
+=======
+>>>>>>> Stashed changes
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
 WORKDIR /app
 
+<<<<<<< Updated upstream
 # ---- Runtime system deps (REQUIRED) ----
 # These are needed at runtime for sentence-transformers
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -49,6 +68,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /install /usr/local
 
 # ---- App code ----
+=======
+# Runtime-only system libs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libstdc++6 \
+    libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy only installed deps
+COPY --from=builder /install /usr/local
+
+# Copy app code
+>>>>>>> Stashed changes
 COPY api ./api
 COPY agents ./agents
 COPY rag ./rag
@@ -58,5 +89,9 @@ RUN mkdir -p /data /app/rag/chroma_db
 
 EXPOSE 8000
 
+<<<<<<< Updated upstream
 # ---- Start FastAPI ----
+=======
+>>>>>>> Stashed changes
 CMD ["uvicorn", "api.main:app", "--host=0.0.0.0", "--port=8000"]
+
