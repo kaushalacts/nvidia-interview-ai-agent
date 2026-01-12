@@ -1,6 +1,6 @@
 services:
   backend:
-    image: thehiddenboy143/nvidia-interview-backend:1.0.2
+    image: thehiddenboy143/nvidia-interview-backend:1.0.3
     container_name: interview-backend
     ports:
       - "8000:8000"
