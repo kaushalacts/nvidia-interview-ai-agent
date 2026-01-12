@@ -11,5 +11,11 @@ passlib[bcrypt]
 
 # ---------- RAG / LANGCHAIN ----------
 langchain-community
-langchain-chroma
+langchain-chroma 
+sentence-transformers 
+langchain-huggingface 
+langchain
+ 
+
+
 chromadb
