@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
 
   ui:
-    image: thehiddenboy143/nvidia-interview-ui:1.0.0
+    image: thehiddenboy143/nvidia-interview-ui:1.0.1
     container_name: interview-ui
     ports:
       - "8501:8501"

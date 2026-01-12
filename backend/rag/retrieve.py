@@ -1,24 +1,36 @@
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
+# rag/retrieve.py
+from typing import List
+from rag.embed_store import get_embeddings
+import logging
+
+logger = logging.getLogger(__name__)
 
 CHROMA_DIR = "rag/chroma_db"
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
 
-def query_articles(query: str, k: int = 3):
-    vectordb = Chroma(
-        persist_directory=CHROMA_DIR,
-        embedding_function=embeddings,
-    )
+def query_articles(query: str, k: int = 3) -> List[dict]:
+    embeddings = get_embeddings()
+    if not embeddings:
+        return []
 
-    results = vectordb.similarity_search(query, k=k)
+    try:
+        from langchain_chroma import Chroma
 
-    return [
-        {
-            "content": doc.page_content[:500],
-            "metadata": doc.metadata,
-        }
-        for doc in results
-    ]
+        vectordb = Chroma(
+            persist_directory=CHROMA_DIR,
+            embedding_function=embeddings,
+        )
+
+        results = vectordb.similarity_search(query, k=k)
+
+        return [
+            {
+                "content": doc.page_content[:500],
+                "metadata": doc.metadata,
+            }
+            for doc in results
+        ]
+
+    except Exception as e:
+        logger.warning(f"⚠️ RAG query failed: {e}")
+        return []

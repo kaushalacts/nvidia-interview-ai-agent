@@ -1,4 +1,6 @@
-# ---------- CORE ----------
+# =========================
+# CORE BACKEND
+# =========================
 numpy<2
 fastapi
 uvicorn
@@ -9,13 +11,16 @@ sqlalchemy
 pandas
 passlib[bcrypt]
 
-# ---------- RAG / LANGCHAIN ----------
-langchain-community
-langchain-chroma 
-sentence-transformers 
-langchain-huggingface 
+# =========================
+# LANGCHAIN / RAG
+# =========================
 langchain
- 
+langchain-community
+langchain-chroma
+langchain-huggingface
 
+# Embeddings (lazy-loaded, safe)
+sentence-transformers
 
+# Vector DB
 chromadb

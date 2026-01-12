@@ -7,8 +7,12 @@ WORKDIR /build
 
 # Minimal build deps
 RUN apt-get update \
- && apt-get install -y --no-install-recommends gcc \
+ && apt-get install -y --no-install-recommends \
+    gcc \
+    libstdc++6 \
+    libgomp1 \
  && rm -rf /var/lib/apt/lists/*
+
 
 # Install Python deps into virtual env-style path
 COPY requirements.txt .
