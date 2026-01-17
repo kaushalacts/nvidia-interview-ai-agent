@@ -1,50 +1,52 @@
+version: "3.9"
+
+networks:
+  app_net:
+
 services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app_net
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+          cpus: "2"
+
   backend:
     image: thehiddenboy143/nvidia-interview-backend:1.0.3
     container_name: interview-backend
-    ports:
-      - "8000:8000"
     volumes:
       - backend_sqlite:/data
       - chroma_data:/app/rag/chroma_db
     environment:
-      OLLAMA_HOST: http://host.docker.internal:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL}
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-    restart: unless-stopped
-
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: n8n
-    ports:
-      - "5678:5678"
-    environment:
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
-      GENERIC_TIMEZONE: ${N8N_TIMEZONE}
-    volumes:
-      - n8n_data:/home/node/.n8n
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: mistral
     depends_on:
-      backend:
+      ollama:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
       interval: 30s
-      timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - app_net
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1"
 
   ui:
     image: thehiddenboy143/nvidia-interview-ui:1.0.1
@@ -56,14 +58,21 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8501"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
+    networks:
+      - app_net
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+    networks:
+      - app_net
 
 volumes:
   backend_sqlite:
   chroma_data:
+  ollama_data:
   n8n_data:

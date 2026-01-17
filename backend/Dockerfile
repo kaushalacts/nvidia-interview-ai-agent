@@ -1,97 +1,63 @@
 # =========================
-# BUILDER STAGE
+# BUILDER
 # =========================
 FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-<<<<<<< Updated upstream
-# ---- System deps required for sentence-transformers / numpy / torch ----
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libstdc++6 \
     libgomp1 \
     libgl1 \
-    curl \
  && rm -rf /var/lib/apt/lists/*
 
-# ---- Python deps ----
 COPY requirements.txt .
 
-# Upgrade pip (important for py311 wheels)
-RUN pip install --upgrade pip
-
-# Install into isolated prefix
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-=======
-# Minimal native deps (required by chromadb / sqlite)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libstdc++6 \
-    libgomp1 \
- && rm -rf /var/lib/apt/lists/*
-
-# Install Python deps into isolated path
-COPY requirements.txt .
 RUN pip install --upgrade pip \
- && pip install --no-cache-dir --prefix=/install -r requirements.txt
-
->>>>>>> Stashed changes
+ && pip install --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    --prefix=/install \
+    -r requirements.txt
 
 
 # =========================
-# RUNTIME STAGE
+# RUNTIME
 # =========================
 FROM python:3.11-slim
 
-<<<<<<< Updated upstream
-# ---- Runtime hygiene ----
-=======
->>>>>>> Stashed changes
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
 
 WORKDIR /app
 
-<<<<<<< Updated upstream
-# ---- Runtime system deps (REQUIRED) ----
-# These are needed at runtime for sentence-transformers
+# ---- System runtime libs ----
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libstdc++6 \
     libgomp1 \
     libgl1 \
  && rm -rf /var/lib/apt/lists/*
 
-# ---- Copy Python deps ----
+# ---- Create user ----
+RUN useradd -m appuser
+
+# ---- Create dirs & set permissions (AS ROOT) ----
+RUN mkdir -p /data /app/rag/chroma_db \
+ && chown -R appuser:appuser /data /app
+
+# ---- Copy deps ----
 COPY --from=builder /install /usr/local
 
-# ---- App code ----
-=======
-# Runtime-only system libs
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libstdc++6 \
-    libgomp1 \
- && rm -rf /var/lib/apt/lists/*
-
-# Copy only installed deps
-COPY --from=builder /install /usr/local
-
-# Copy app code
->>>>>>> Stashed changes
+# ---- Copy app code (still ROOT, but owned already) ----
 COPY api ./api
 COPY agents ./agents
 COPY rag ./rag
 
-# ---- Runtime dirs ----
-RUN mkdir -p /data /app/rag/chroma_db
+# ---- Drop privileges (FINAL STEP) ----
+USER appuser
 
 EXPOSE 8000
 
-<<<<<<< Updated upstream
-# ---- Start FastAPI ----
-=======
->>>>>>> Stashed changes
-CMD ["uvicorn", "api.main:app", "--host=0.0.0.0", "--port=8000"]
-
+CMD ["uvicorn", "api.main:app", "--host=0.0.0.0", "--port=8000", "--workers=2"]

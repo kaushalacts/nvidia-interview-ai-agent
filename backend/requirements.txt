@@ -1,11 +1,5 @@
-<<<<<<< Updated upstream
-# =========================
-# CORE BACKEND
-# =========================
+# ===== CORE =====
 numpy<2
-=======
-# ================= CORE =================
->>>>>>> Stashed changes
 fastapi
 uvicorn
 pydantic
@@ -15,32 +9,16 @@ sqlalchemy
 pandas
 passlib[bcrypt]
 
-<<<<<<< Updated upstream
-# =========================
-# LANGCHAIN / RAG
-# =========================
-langchain
-langchain-community
-langchain-chroma
-langchain-huggingface
-
-# Embeddings (lazy-loaded, safe)
-sentence-transformers
-
-# Vector DB
-=======
-# ================= LANGCHAIN CORE =================
+# ===== LANGCHAIN =====
 langchain
 langchain-core
 langchain-community
 langchain-chroma
 
-# ================= VECTOR DB =================
->>>>>>> Stashed changes
+# ===== VECTOR DB =====
 chromadb
 
-# ================= OPTIONAL (LAZY LOADED) =================
-# DO NOT import at startup
+# ===== ML (CPU ONLY) =====
+torch==2.2.2+cpu
 sentence-transformers
 langchain-huggingface
-
