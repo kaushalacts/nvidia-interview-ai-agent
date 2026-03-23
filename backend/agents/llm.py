@@ -2,8 +2,8 @@ import time
 import requests
 import os
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi3:mini")
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi:latest")
 
 MAX_RETRIES = 6
 INITIAL_DELAY = 2  # seconds
@@ -30,6 +30,7 @@ def generate_answer(prompt: str) -> str:
                 return data.get("response", "").strip()
 
             last_error = response.text
+            print (last_error)
 
         except Exception as e:
             last_error = str(e)
