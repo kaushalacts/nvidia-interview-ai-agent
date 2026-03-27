@@ -35,6 +35,42 @@ class InterviewSession(Base):
     completed_at = Column(DateTime)
     
     user = relationship("User", back_populates="sessions")
+    responses = relationship("QuestionResponse", back_populates="session")
+
+
+class QuestionResponse(Base):
+    __tablename__ = "question_responses"
+    
+    response_id = Column(String(36), primary_key=True)
+    session_id = Column(String(36), ForeignKey("interview_sessions.session_id"), nullable=False, index=True)
+    question_text = Column(Text, nullable=False)
+    user_answer = Column(Text, nullable=False)
+    evaluation_score = Column(Float)
+    evaluation_feedback = Column(Text)
+    technical_accuracy = Column(Float)
+    depth_score = Column(Float)
+    clarity_score = Column(Float)
+    time_taken = Column(Integer)  # seconds
+    stage = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    session = relationship("InterviewSession", back_populates="responses")
+
+
+class QuestionBank(Base):
+    __tablename__ = "question_bank"
+    
+    question_id = Column(String(36), primary_key=True)
+    question_text = Column(Text, nullable=False)
+    expected_answer = Column(Text)
+    topic_tags = Column(Text)  # JSON array
+    difficulty_level = Column(Integer)
+    stage_suitable = Column(String(50))
+    source_url = Column(Text)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    usage_count = Column(Integer, default=0)
+    avg_user_score = Column(Float)
+    is_active = Column(Boolean, default=True)
 
 
 class ChatHistory(Base):
