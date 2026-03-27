@@ -43,6 +43,11 @@ class InterviewOrchestrator:
         context = self.session_manager.get_session_context(session_id)
         current_stage = InterviewStage(context["current_stage"])
         
+        # TODO: Architecture deviation - Direct DB access for QuestionResponse queries
+        # Spec requires all session persistence through SessionManager
+        # Current implementation directly queries QuestionResponse at lines 47-50, 72-75, 134
+        # Future refactoring: Move response queries to SessionManager methods
+        
         # Get average score in current stage
         responses = self.db.query(QuestionResponse).filter_by(
             session_id=session_id,
@@ -89,8 +94,8 @@ class InterviewOrchestrator:
     def record_response(
         self,
         session_id: str,
-        question: str,
-        answer: str,
+        question_id: str,
+        user_response: str,
         evaluation: Dict
     ):
         """Record user response and evaluation"""
@@ -102,8 +107,8 @@ class InterviewOrchestrator:
         response = QuestionResponse(
             response_id=str(uuid.uuid4()),
             session_id=session_id,
-            question_text=question,
-            user_answer=answer,
+            question_text=question_id,
+            user_answer=user_response,
             evaluation_score=evaluation.get("overall_score", 0),
             evaluation_feedback=evaluation.get("feedback", ""),
             technical_accuracy=evaluation.get("technical_accuracy", 0),
@@ -117,7 +122,7 @@ class InterviewOrchestrator:
         self.db.commit()
         
         # Update conversation history
-        self.session_manager.add_to_conversation(session_id, question, answer)
+        self.session_manager.add_to_conversation(session_id, question_id, user_response)
         
         # Update weak/strong areas
         if "identified_weak_areas" in evaluation:
