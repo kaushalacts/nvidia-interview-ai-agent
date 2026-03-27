@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, Text, DateTime, String, Float, Boolean
+from sqlalchemy import Column, Integer, Text, DateTime, String, Float, Boolean, ForeignKey
 from datetime import datetime
 from api.database import Base
+from sqlalchemy.orm import relationship
 
 
 class User(Base):
@@ -13,6 +14,27 @@ class User(Base):
     role = Column(String(20), default="user")
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
+    
+    sessions = relationship("InterviewSession", back_populates="user")
+
+
+class InterviewSession(Base):
+    __tablename__ = "interview_sessions"
+    
+    session_id = Column(String(36), primary_key=True)
+    user_id = Column(String(36), ForeignKey("users.user_id"), nullable=False, index=True)
+    current_stage = Column(String(50), nullable=False)
+    stage_start_time = Column(DateTime)
+    difficulty_level = Column(Integer, default=3)
+    weak_areas = Column(Text)  # JSON array
+    strong_areas = Column(Text)  # JSON array
+    conversation_history = Column(Text)  # JSON array
+    overall_score = Column(Float)
+    status = Column(String(20), default="in_progress")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime)
+    
+    user = relationship("User", back_populates="sessions")
 
 
 class ChatHistory(Base):
@@ -41,3 +63,4 @@ class DailyBlog(Base):
     title = Column(String(200))
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
