@@ -1,6 +1,19 @@
-from sqlalchemy import Column, Integer, Text, DateTime, String
+from sqlalchemy import Column, Integer, Text, DateTime, String, Float, Boolean
 from datetime import datetime
 from api.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+    
+    user_id = Column(String(36), primary_key=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(Text, nullable=False)
+    full_name = Column(String(255))
+    role = Column(String(20), default="user")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime)
+
 
 class ChatHistory(Base):
     __tablename__ = "chat_history"
@@ -10,6 +23,7 @@ class ChatHistory(Base):
     answer = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
+
 class Evaluation(Base):
     __tablename__ = "evaluations"
 
@@ -18,6 +32,7 @@ class Evaluation(Base):
     score = Column(Text)
     feedback = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
 
 class DailyBlog(Base):
     __tablename__ = "daily_blogs"
