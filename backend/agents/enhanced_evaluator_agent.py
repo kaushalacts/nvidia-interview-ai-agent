@@ -1,6 +1,6 @@
 import json
 from agents.llm import generate_answer
-from typing import Dict
+from typing import Any, List
 
 
 class EnhancedEvaluatorAgent:
@@ -164,11 +164,11 @@ JSON Response:"""
             else:
                 return self._get_fallback_evaluation()
                 
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
+        except (json.JSONDecodeError, ValueError, KeyError):
             # If JSON parsing fails, return fallback evaluation
             return self._get_fallback_evaluation()
     
-    def _clamp_score(self, score: any) -> int:
+    def _clamp_score(self, score: Any) -> int:
         """Ensure score is an integer between 0 and 100"""
         try:
             score_int = int(float(score))
