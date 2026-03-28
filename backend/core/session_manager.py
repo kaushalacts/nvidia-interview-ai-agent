@@ -88,7 +88,7 @@ class SessionManager:
         """Get full session context for agents"""
         session = self.get_session(session_id)
         if not session:
-            return {}
+            raise ValueError(f"Session not found: {session_id}")
         
         # Calculate time in current stage
         time_in_stage = 0

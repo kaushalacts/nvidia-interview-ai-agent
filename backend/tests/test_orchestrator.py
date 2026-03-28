@@ -197,3 +197,9 @@ def test_complete_interview(orchestrator, test_db):
     session = orchestrator.session_manager.get_session(session_id)
     assert session.status == "completed"
     assert session.overall_score == 8.5
+
+
+def test_get_next_action_invalid_session(orchestrator):
+    """Test that invalid session_id raises ValueError"""
+    with pytest.raises(ValueError, match="Session not found"):
+        orchestrator.get_next_action("invalid_session_id")

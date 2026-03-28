@@ -3,7 +3,9 @@ from core.session_manager import SessionManager
 from core.state_machine import InterviewStage, get_next_stage, can_transition, adjust_difficulty_for_next_stage
 from api.models import QuestionResponse
 from typing import Dict
+from datetime import datetime
 import statistics
+import uuid
 
 
 class InterviewOrchestrator:
@@ -99,9 +101,6 @@ class InterviewOrchestrator:
         evaluation: Dict
     ):
         """Record user response and evaluation"""
-        import uuid
-        from datetime import datetime
-        
         context = self.session_manager.get_session_context(session_id)
         
         response = QuestionResponse(
