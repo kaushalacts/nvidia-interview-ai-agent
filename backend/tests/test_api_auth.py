@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from api.main import app, get_db
 from api.models import Base, User
 from api.auth import verify_token
@@ -11,8 +12,14 @@ from datetime import datetime
 # In-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
+
+# Create tables immediately with test engine
+Base.metadata.create_all(bind=engine)
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -30,10 +37,22 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_database():
-    """Create tables before each test and drop after"""
-    Base.metadata.create_all(bind=engine)
+    """Clean database before and after each test"""
+    # Clear all data from tables before test
+    connection = engine.connect()
+    for table in reversed(Base.metadata.sorted_tables):
+        connection.execute(table.delete())
+    connection.commit()
+    connection.close()
+    
     yield
-    Base.metadata.drop_all(bind=engine)
+    
+    # Clean up after test
+    connection = engine.connect()
+    for table in reversed(Base.metadata.sorted_tables):
+        connection.execute(table.delete())
+    connection.commit()
+    connection.close()
 
 
 def test_register_new_user():
