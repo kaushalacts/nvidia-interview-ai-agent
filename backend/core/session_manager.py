@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from api.models import InterviewSession, QuestionResponse
 from core.state_machine import InterviewStage
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import json
 
@@ -20,7 +20,7 @@ class SessionManager:
             session_id=session_id,
             user_id=user_id,
             current_stage=InterviewStage.WARMUP.value,
-            stage_start_time=datetime.utcnow(),
+            stage_start_time=datetime.now(timezone.utc),
             difficulty_level=3,
             weak_areas=json.dumps([]),
             strong_areas=json.dumps([]),
@@ -41,7 +41,7 @@ class SessionManager:
         session = self.get_session(session_id)
         if session:
             session.current_stage = new_stage.value
-            session.stage_start_time = datetime.utcnow()
+            session.stage_start_time = datetime.now(timezone.utc)
             self.db.commit()
     
     def update_difficulty(self, session_id: str, new_difficulty: int):
@@ -79,7 +79,7 @@ class SessionManager:
             history.append({
                 "question": question,
                 "answer": answer,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
             session.conversation_history = json.dumps(history)
             self.db.commit()
@@ -93,7 +93,11 @@ class SessionManager:
         # Calculate time in current stage
         time_in_stage = 0
         if session.stage_start_time:
-            time_in_stage = int((datetime.utcnow() - session.stage_start_time).total_seconds())
+            # Make stage_start_time timezone-aware if it's naive
+            stage_start = session.stage_start_time
+            if stage_start.tzinfo is None:
+                stage_start = stage_start.replace(tzinfo=timezone.utc)
+            time_in_stage = int((datetime.now(timezone.utc) - stage_start).total_seconds())
         
         # Get responses in current stage
         responses = self.db.query(QuestionResponse).filter_by(
@@ -105,10 +109,11 @@ class SessionManager:
             "session_id": session_id,
             "user_id": session.user_id,
             "current_stage": session.current_stage,
+            "stage_start_time": session.stage_start_time.isoformat() if session.stage_start_time else None,
             "difficulty_level": session.difficulty_level,
-            "weak_areas": json.loads(session.weak_areas or "[]"),
-            "strong_areas": json.loads(session.strong_areas or "[]"),
-            "conversation_history": json.loads(session.conversation_history or "[]"),
+            "weak_areas": json.dumps(json.loads(session.weak_areas or "[]")),
+            "strong_areas": json.dumps(json.loads(session.strong_areas or "[]")),
+            "conversation_history": json.dumps(json.loads(session.conversation_history or "[]")),
             "time_in_stage": time_in_stage,
             "questions_in_stage": len(responses)
         }
@@ -119,7 +124,7 @@ class SessionManager:
         if session:
             session.status = "completed"
             session.overall_score = overall_score
-            session.completed_at = datetime.utcnow()
+            session.completed_at = datetime.now(timezone.utc)
             self.db.commit()
     
     def get_user_incomplete_sessions(self, user_id: str) -> List[InterviewSession]:
