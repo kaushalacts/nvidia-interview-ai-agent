@@ -9,7 +9,7 @@ import uuid
 import json
 import logging
 from typing import List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 
 from api.models import QuestionBank
 from api.database import SessionLocal
@@ -77,6 +77,8 @@ class ContentManager:
             }
         
         # Check for duplicates
+        # TODO: TOCTOU race condition - concurrent requests could store duplicates
+        # Consider: database unique constraint on question_hash or advisory locking
         is_duplicate, existing_id = self.check_duplicate(question_data["question"])
         if is_duplicate:
             return {
@@ -265,14 +267,13 @@ class ContentManager:
                 difficulty_level=question_data["difficulty_level"],
                 stage_suitable=question_data["stage_suitable"],
                 source_url=question_data["source_url"],
-                created_date=datetime.utcnow(),
+                created_date=datetime.now(timezone.utc),
                 usage_count=0,
                 avg_user_score=None,
                 is_active=True
             )
             
             db.add(question_record)
-            db.commit()
             
             # Store embedding in ChromaDB
             embeddings = get_embeddings()
@@ -303,7 +304,11 @@ class ContentManager:
                     
                 except Exception as e:
                     logger.warning(f"Failed to store embedding: {e}")
-                    # Continue even if embedding fails
+                    db.rollback()
+                    raise e
+            
+            # Commit database only after successful ChromaDB storage
+            db.commit()
             
             return content_id
             
