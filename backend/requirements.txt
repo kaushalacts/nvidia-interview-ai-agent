@@ -3,6 +3,7 @@ numpy<2
 fastapi
 uvicorn
 pydantic
+email-validator
 requests
 python-dotenv
 sqlalchemy
