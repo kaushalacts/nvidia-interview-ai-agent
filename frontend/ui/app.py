@@ -78,6 +78,97 @@ def apply_theme(theme: str):
 apply_theme(st.session_state.theme)
 
 # =========================================================
+# AUTHENTICATION
+# =========================================================
+
+def show_login_page():
+    """Display login/registration form"""
+    st.title("🟢 NVIDIA Interview AI Agent")
+    st.markdown("### Welcome! Please login or register to continue")
+    
+    # Tab for Login vs Register
+    tab1, tab2 = st.tabs(["Login", "Register"])
+    
+    with tab1:
+        with st.form("login_form"):
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Login")
+            
+            if submitted:
+                try:
+                    response = requests.post(
+                        f"{API}/api/auth/login",
+                        json={"email": email, "password": password}
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        st.session_state.token = data["token"]
+                        st.session_state.user_id = data["user_id"]
+                        st.session_state.email = data["email"]
+                        st.session_state.role = data.get("role", "user")
+                        st.success("Login successful!")
+                        st.rerun()
+                    else:
+                        st.error(f"Login failed: {response.json().get('detail', 'Unknown error')}")
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+    
+    with tab2:
+        with st.form("register_form"):
+            full_name = st.text_input("Full Name")
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            password_confirm = st.text_input("Confirm Password", type="password")
+            submitted = st.form_submit_button("Register")
+            
+            if submitted:
+                if password != password_confirm:
+                    st.error("Passwords do not match")
+                elif len(password) < 8:
+                    st.error("Password must be at least 8 characters")
+                else:
+                    try:
+                        response = requests.post(
+                            f"{API}/api/auth/register",
+                            json={"email": email, "password": password, "full_name": full_name}
+                        )
+                        if response.status_code == 201:
+                            data = response.json()
+                            st.session_state.token = data["token"]
+                            st.session_state.user_id = data["user_id"]
+                            st.session_state.email = data["email"]
+                            st.session_state.role = "user"
+                            st.success("Registration successful!")
+                            st.rerun()
+                        else:
+                            st.error(f"Registration failed: {response.json().get('detail', 'Unknown error')}")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+
+def show_user_header():
+    """Display logged-in user info and logout button"""
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.markdown(f"**Logged in as:** {st.session_state.get('email', 'Unknown')}")
+    with col2:
+        if st.button("Logout"):
+            # Clear session state
+            for key in ['token', 'user_id', 'email', 'role']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
+
+# Check if user is logged in
+if "token" not in st.session_state:
+    show_login_page()
+    st.stop()  # Stop execution if not logged in
+
+# Show user header if logged in
+show_user_header()
+st.divider()
+
+# =========================================================
 # API HELPERS (RETRY + BACKOFF)
 # =========================================================
 def api_request(method, path, json=None, params=None):
