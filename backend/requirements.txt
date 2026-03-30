@@ -3,6 +3,7 @@ numpy<2
 fastapi
 uvicorn
 pydantic
+email-validator
 requests
 python-dotenv
 sqlalchemy
@@ -22,3 +23,11 @@ chromadb
 torch==2.2.2+cpu
 sentence-transformers
 langchain-huggingface
+
+# ===== AUTH & JWT =====
+python-jose[cryptography]
+
+# ===== TESTING =====
+pytest
+httpx
+pytest-asyncio
