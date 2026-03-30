@@ -30,8 +30,12 @@ services:
       - backend_sqlite:/data
       - chroma_data:/app/rag/chroma_db
     environment:
-      OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: mistral
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=10080
+      - DATABASE_URL=sqlite:///./data/interview_ai.db
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2
     depends_on:
       ollama:
         condition: service_healthy

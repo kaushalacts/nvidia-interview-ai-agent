@@ -83,5 +83,12 @@ def test_get_session_context(session_manager, test_db_engine):
     assert context["session_id"] == session_id
     assert context["current_stage"] == InterviewStage.WARMUP.value
     assert context["difficulty_level"] == 3
-    assert isinstance(context["weak_areas"], list)
-    assert isinstance(context["conversation_history"], list)
+    assert isinstance(context["weak_areas"], str)
+    assert isinstance(context["conversation_history"], str)
+    
+    # Verify JSON strings can be parsed
+    import json
+    weak_areas = json.loads(context["weak_areas"])
+    conversation_history = json.loads(context["conversation_history"])
+    assert isinstance(weak_areas, list)
+    assert isinstance(conversation_history, list)
