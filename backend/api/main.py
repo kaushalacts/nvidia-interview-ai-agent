@@ -34,7 +34,22 @@ def get_interview_question():
 
 @app.get("/plan/today")
 def plan_today():
-    return {"plan": generate_daily_plan()}
+    try:
+        plan = generate_daily_plan()
+
+        if not plan:
+            return {"plan": "Plan generation returned empyt output"}
+
+        return {"plan": plan}
+
+    except Exception as e: 
+        print ("ERROR in /plan/todya:", str(e))
+        return {"plan": f"Failed to generate plan:{str(e)}"}
+
+    #plan = generate_daily_plan()
+    #return {
+    #        "plan": plan or "Plan generation failed"
+    #        }
 
 @app.post("/ask")
 def ask(req: schemas.AskRequest, db: Session = Depends(get_db)):
