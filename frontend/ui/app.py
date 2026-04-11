@@ -17,7 +17,7 @@ st.set_page_config(
 # =========================================================
 # CONFIG
 # =========================================================
-API = os.getenv("API", "http://backend:8000")
+API = os.getenv("API", "http://127.0.0.1:8000")
 MAX_RETRIES = 5
 INITIAL_BACKOFF = 1.0  # seconds
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
@@ -26,10 +26,10 @@ EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 # THEME STATE
 # =========================================================
 if "theme" not in st.session_state:
-    st.session_state.theme = "dark"
+    st.session_state.theme = "light"
 
 # =========================================================
-# THEME CSS
+# THEME CSS (Custom Styling for Each Task Type)
 # =========================================================
 def apply_theme(theme: str):
     if theme == "dark":
@@ -39,16 +39,34 @@ def apply_theme(theme: str):
             body, .stApp {
                 background-color: #0E1117;
                 color: #FAFAFA;
+                font-family: 'Roboto', sans-serif;
             }
             .stButton > button {
                 background-color: #76B900;
                 color: black;
                 border-radius: 8px;
+                padding: 10px;
             }
             .stTextInput input,
             .stTextArea textarea {
                 background-color: #161B22;
                 color: #FAFAFA;
+            }
+            .task-card {
+                border: 1px solid #2D3748;
+                border-radius: 8px;
+                padding: 20px;
+                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+            }
+            .task-header {
+                font-size: 24px;
+                color: #76B900;
+            }
+            .task-subheader {
+                font-size: 18px;
+                color: #E2E8F0;
+                margin-bottom: 15px;
             }
             </style>
             """,
@@ -61,16 +79,34 @@ def apply_theme(theme: str):
             body, .stApp {
                 background-color: #FFFFFF;
                 color: #000000;
+                font-family: 'Roboto', sans-serif;
             }
             .stButton > button {
                 background-color: #0E6FFF;
                 color: white;
                 border-radius: 8px;
+                padding: 10px;
             }
             .stTextInput input,
             .stTextArea textarea {
                 background-color: #F2F2F2;
                 color: #000000;
+            }
+            .task-card {
+                border: 1px solid #D1D5DB;
+                border-radius: 8px;
+                padding: 20px;
+                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+            }
+            .task-header {
+                font-size: 24px;
+                color: #0E6FFF;
+            }
+            .task-subheader {
+                font-size: 18px;
+                color: #2D3748;
+                margin-bottom: 15px;
             }
             </style>
             """,
@@ -248,10 +284,8 @@ def api_request(method, path, json=None, params=None):
             time.sleep(backoff)
             backoff *= 2
 
-
 def api_get(path, **kwargs):
     return api_request("GET", path, **kwargs)
-
 
 def api_post(path, json=None, **kwargs):
     return api_request("POST", path, json=json, **kwargs)
@@ -262,14 +296,10 @@ def api_post(path, json=None, **kwargs):
 with st.sidebar:
     st.title("⚙️ Settings")
 
-    if st.session_state.theme == "dark":
-        if st.button("☀️ Switch to Light Mode"):
-            st.session_state.theme = "light"
-            st.rerun()
-    else:
-        if st.button("🌙 Switch to Dark Mode"):
-            st.session_state.theme = "dark"
-            st.rerun()
+    theme_button = "☀️ Switch to Light Mode" if st.session_state.theme == "dark" else "🌙 Switch to Dark Mode"
+    if st.button(theme_button):
+        st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
+        st.rerun()
 
 # =========================================================
 # HEADER
@@ -293,33 +323,47 @@ for k, v in DEFAULTS.items():
     st.session_state.setdefault(k, v)
 
 # =========================================================
-# TABS
+# TABS WITH DYNAMIC STYLING
 # =========================================================
 tabs = st.tabs(
     ["🎯 Plan", "💬 Ask AI", "📝 Interview Mode", "📊 Progress", "📜 History", "📰 Blogs"]
 )
 
 # =========================================================
-# TAB 1: DAILY PLAN
+# TASK 1: DAILY PLAN (TASK CARD DESIGN)
 # =========================================================
 with tabs[0]:
-    st.subheader("🎯 Daily Study Plan")
+    st.markdown("<div class='task-header'>🎯 Daily Study Plan</div>", unsafe_allow_html=True)
+    with st.expander("Generate Plan", expanded=True):
+        if st.button("Generate Plan"):
+            with st.spinner("Generating plan..."):
+                resp = api_get("/plan/today")
 
-    if st.button("Generate Plan"):
-        with st.spinner("Generating plan..."):
-            resp = api_get("/plan/today")
-            if resp:
-                st.session_state.plan = resp.get("plan")
+                st.write("DEBUT:", resp)
 
-    if st.session_state.plan:
-        st.markdown(st.session_state.plan)
+                if resp:
+                    plan = resp.get("plan")
+
+                    if plan: 
+                        st.session_state.plan = plan
+                    else: 
+                        st.error("Empty plan received")
+                else: 
+                    st.error("API failed")
+
+
+ #               if resp:
+ #                   st.session_state.plan = resp.get("plan")
+
+#    if st.session_state.plan:
+#        st.markdown(
+#            f"<div class='task-card'>{st.session_state.plan}</div>", unsafe_al#low_html=True)
 
 # =========================================================
-# TAB 2: ASK INTERVIEW AI
+# TASK 2: ASK INTERVIEW AI (TASK CARD DESIGN)
 # =========================================================
 with tabs[1]:
-    st.subheader("💬 Ask Interview AI")
-
+    st.markdown("<div class='task-header'>💬 Ask Interview AI</div>", unsafe_allow_html=True)
     question = st.text_input("Interview Question")
 
     if st.button("Ask AI"):
@@ -333,11 +377,11 @@ with tabs[1]:
         st.write(st.session_state.ai_answer)
 
 # =========================================================
-# TAB 3: INTERVIEW MODE
+# TASK 3: INTERVIEW MODE (TASK CARD DESIGN)
 # =========================================================
 with tabs[2]:
-    st.subheader("📝 Interview Mode (AI as Interviewer)")
-
+    st.markdown("<div class='task-header'>📝 Interview Mode (AI as Interviewer)</div>", unsafe_allow_html=True)
+    
     if not st.session_state.interview_started:
         if st.button("🎤 Start Interview"):
             resp = api_get("/interview/question")
@@ -347,7 +391,6 @@ with tabs[2]:
 
     if st.session_state.current_question:
         st.markdown(f"**Question:** {st.session_state.current_question}")
-
         user_answer = st.text_area("Your Answer", height=180)
 
         if st.button("Submit Answer"):
@@ -366,9 +409,11 @@ with tabs[2]:
         st.write(st.session_state.evaluation)
 
 # =========================================================
-# TAB 4: PROGRESS
+# TASK 4: PROGRESS (TASK CARD DESIGN)
 # =========================================================
 with tabs[3]:
+    st.markdown("<div class='task-header'>📊 Progress</div>", unsafe_allow_html=True)
+    
     scores = api_get("/history/scores")
 
     if scores:
@@ -379,9 +424,11 @@ with tabs[3]:
         st.info("No evaluation data yet.")
 
 # =========================================================
-# TAB 5: HISTORY
+# TASK 5: HISTORY (TASK CARD DESIGN)
 # =========================================================
 with tabs[4]:
+    st.markdown("<div class='task-header'>📜 History</div>", unsafe_allow_html=True)
+    
     data = api_get("/history/chat")
 
     if not data:
@@ -401,9 +448,11 @@ with tabs[4]:
             )
 
 # =========================================================
-# TAB 6: BLOGS
+# TASK 6: BLOGS (TASK CARD DESIGN)
 # =========================================================
 with tabs[5]:
+    st.markdown("<div class='task-header'>📰 Blogs</div>", unsafe_allow_html=True)
+    
     if st.button("Generate Today's Blog"):
         with st.spinner("Generating DevOps blog..."):
             resp = api_get("/blog/daily")
@@ -422,4 +471,3 @@ with tabs[5]:
             st.markdown(f"### {blog['title']}")
             st.caption(blog["created_at"])
             st.write(blog["content"])
-

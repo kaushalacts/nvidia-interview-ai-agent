@@ -1,5 +1,6 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import time
 
 from rag.retrieve import query_articles
 from agents.llm import generate_answer
@@ -23,23 +24,26 @@ This is NOT entry-level DevOps.
 """
 
 def generate_daily_plan():
-    # 🇮🇳 India timezone
+    
+    print ("Generating daily plan ...")
+
     tz = ZoneInfo("Asia/Kolkata")
     now = datetime.now(tz)
 
     today = now.strftime("%A, %d %B %Y")
 
-    # Pull RAG context focused on GPU infra + DevOps
-    docs = query_articles(
-        query=(
-            "NVIDIA GPU infrastructure Kubernetes CUDA "
-            "performance optimization DevOps MLOps SRE"
-        ),
-        k=3
-    )
+    try:
+        # Pull RAG context focused on GPU infra + DevOps
+        docs = query_articles(
+                query="NVIDIA GPU infrastructure Kubernetes CUDA performance optimization DevOps MLOps SRE", k=3)
+        print ("RAG docs fetched:",len(docs))
+
+    except Exception as e:
+        print ("RAG failed:", e)
+        docs = []
 
     context = "\n".join(
-        f"- {d.get('content', '')[:500]}" for d in docs
+        f"- {d.get('content', '')[:100]}" for d in docs
     ) or "No specific reference context available."
 
     prompt = f"""
@@ -91,5 +95,31 @@ Rules:
 - Prioritize reasoning, trade-offs, and impact
 """
 
-    return generate_answer(prompt)
+#    return generate_answer(prompt)
+    
+    try:
+        start = time.time()
 
+        result = generate_answer(prompt)
+
+        print (f"LLM took {time.time() - start:.2f}s")
+
+        #print("✅ LLM response received")
+
+        if not result:
+            return "⚠️ Empty response from LLM"
+
+        return result
+
+    except Exception as e:
+        print ("❌ LLM failed:", e)
+
+        return """
+🕒 Time-Boxed Senior DevOps Plan
+
+- 00:00–00:15 → Linux CPU scheduling
+- 00:15–00:45 → Kubernetes GPU scheduling
+- 00:45–01:15 → SLO design
+- 01:15–01:40 → Debug production issue
+- 01:40–02:00 → Design multi-tenant infra
+"""
