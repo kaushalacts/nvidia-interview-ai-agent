@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import os
 import time
+import re
 
 # =========================================================
 # STREAMLIT PAGE CONFIG (⚠️ MUST BE FIRST)
@@ -19,6 +20,7 @@ st.set_page_config(
 API = os.getenv("API", "http://127.0.0.1:8000")
 MAX_RETRIES = 5
 INITIAL_BACKOFF = 1.0  # seconds
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
 # =========================================================
 # THEME STATE
@@ -114,11 +116,130 @@ def apply_theme(theme: str):
 apply_theme(st.session_state.theme)
 
 # =========================================================
+# AUTHENTICATION
+# =========================================================
+
+def show_login_page():
+    """Display login/registration form"""
+    st.title("🟢 NVIDIA Interview AI Agent")
+    st.markdown("### Welcome! Please login or register to continue")
+    
+    # Tab for Login vs Register
+    tab1, tab2 = st.tabs(["Login", "Register"])
+    
+    with tab1:
+        with st.form("login_form"):
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Login")
+            
+            if submitted:
+                # Validate fields
+                if not email or not password:
+                    st.error("Email and password are required")
+                elif not EMAIL_REGEX.match(email):
+                    st.error("Please enter a valid email address")
+                else:
+                    try:
+                        response = requests.post(
+                            f"{API}/api/auth/login",
+                            json={"email": email, "password": password}
+                        )
+                        if response.status_code == 200:
+                            data = response.json()
+                            st.session_state.token = data["token"]
+                            st.session_state.user_id = data["user_id"]
+                            st.session_state.email = data["email"]
+                            st.session_state.role = data.get("role", "user")
+                            st.session_state.token_expires_at = time.time() + data.get("expires_in", 604800)
+                            st.success("Login successful!")
+                            st.rerun()
+                        else:
+                            st.error(f"Login failed: {response.json().get('detail', 'Unknown error')}")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+    
+    with tab2:
+        with st.form("register_form"):
+            full_name = st.text_input("Full Name")
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            password_confirm = st.text_input("Confirm Password", type="password")
+            submitted = st.form_submit_button("Register")
+            
+            if submitted:
+                # Validate fields
+                if not full_name or not email or not password or not password_confirm:
+                    st.error("All fields are required")
+                elif not EMAIL_REGEX.match(email):
+                    st.error("Please enter a valid email address")
+                elif password != password_confirm:
+                    st.error("Passwords do not match")
+                elif len(password) < 8:
+                    st.error("Password must be at least 8 characters")
+                else:
+                    try:
+                        response = requests.post(
+                            f"{API}/api/auth/register",
+                            json={"email": email, "password": password, "full_name": full_name}
+                        )
+                        if response.status_code == 201:
+                            data = response.json()
+                            st.session_state.token = data["token"]
+                            st.session_state.user_id = data["user_id"]
+                            st.session_state.email = data["email"]
+                            st.session_state.role = "user"
+                            st.session_state.token_expires_at = time.time() + data.get("expires_in", 604800)
+                            st.success("Registration successful!")
+                            st.rerun()
+                        else:
+                            st.error(f"Registration failed: {response.json().get('detail', 'Unknown error')}")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+
+def show_user_header():
+    """Display logged-in user info and logout button"""
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.markdown(f"**Logged in as:** {st.session_state.get('email', 'Unknown')}")
+    with col2:
+        if st.button("Logout"):
+            # Clear session state
+            for key in ['token', 'user_id', 'email', 'role', 'token_expires_at']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
+
+# Check if user is logged in
+if "token" not in st.session_state:
+    show_login_page()
+    st.stop()  # Stop execution if not logged in
+
+# Show user header if logged in
+show_user_header()
+st.divider()
+
+# =========================================================
 # API HELPERS (RETRY + BACKOFF)
 # =========================================================
 def api_request(method, path, json=None, params=None):
+    # Check if token is expired BEFORE making request
+    if "token_expires_at" in st.session_state:
+        if time.time() > st.session_state.token_expires_at:
+            # Clear expired token
+            for key in ['token', 'user_id', 'email', 'role', 'token_expires_at']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.error("Your session has expired. Please log in again.")
+            st.rerun()
+    
     url = f"{API}{path}"
     backoff = INITIAL_BACKOFF
+    
+    # Build headers with auth token if available
+    headers = {}
+    if "token" in st.session_state:
+        headers["Authorization"] = f"Bearer {st.session_state.token}"
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -127,11 +248,31 @@ def api_request(method, path, json=None, params=None):
                 url=url,
                 json=json,
                 params=params,
-                timeout=180,
+                headers=headers,
+                timeout=60,
             )
             resp.raise_for_status()
             return resp.json()
 
+        except requests.exceptions.HTTPError as e:
+            # Handle 401 Unauthorized - clear invalid token
+            if e.response.status_code == 401:
+                for key in ['token', 'user_id', 'email', 'role', 'token_expires_at']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.error("Your session has expired. Please log in again.")
+                st.rerun()
+            
+            if attempt == MAX_RETRIES:
+                st.error(
+                    f"❌ Backend unavailable after {MAX_RETRIES} attempts\n\n"
+                    f"Endpoint: `{path}`\n\nError: {e}"
+                )
+                return None
+
+            time.sleep(backoff)
+            backoff *= 2
+        
         except Exception as e:
             if attempt == MAX_RETRIES:
                 st.error(
