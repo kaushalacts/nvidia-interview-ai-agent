@@ -16,7 +16,7 @@ class BlogResponse(BaseModel):
     content: str
 
 
-# Authentication schemas
+# Auth
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
@@ -34,3 +34,20 @@ class AuthResponse(BaseModel):
     role: Optional[str] = None
     token: str
     expires_in: Optional[int] = None
+
+
+# Interview flow
+class InterviewStartRequest(BaseModel):
+    company: Optional[str] = "NVIDIA"
+
+
+class InterviewNextRequest(BaseModel):
+    session_id: str
+    company: Optional[str] = "NVIDIA"
+
+
+class InterviewSubmitRequest(BaseModel):
+    session_id: str
+    question_id: str
+    question: str
+    answer: str

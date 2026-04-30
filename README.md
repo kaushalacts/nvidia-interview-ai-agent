@@ -1,352 +1,479 @@
-# 🧠 NVIDIA Interview AI Agent
+# Interview Prep AI Platform
 
-An **agentic AI system** that simulates a real technical interview experience — including **multi-stage interview flow**, **adaptive difficulty**, **JWT authentication with multi-user support**, and **comprehensive evaluation metrics** — using a **Retrieval-Augmented Generation (RAG)** architecture and a **local LLM**.
+A fully local, agentic AI system that simulates real technical interviews for senior DevOps, SRE, MLOps, and AIOps roles at top tech companies — NVIDIA, Google, Meta, and Apple.
 
-This project is built as a **personal interview preparation platform**, focusing on:
-- correctness over scale
-- debuggability
-- realistic interviewer behavior
-- clean system design
+The platform runs end-to-end on your machine: no external API keys, no data leaving your system. Everything is powered by a local LLM via Ollama.
 
 ---
 
-## 🚀 What This Project Does
+## What It Does
 
-The system behaves like a **senior technical interviewer**:
-
-- **Multi-stage interview progression** (WARMUP → TECHNICAL_DEEP_DIVE → PROBLEM_SOLVING → BEHAVIORAL → WRAP_UP)
-- **Adaptive difficulty adjustment** (1-5 levels, scales based on performance)
-- **Multi-dimensional evaluation** (technical accuracy, depth, communication, problem-solving)
-- **User authentication & multi-user support** (JWT tokens, secure authentication)
-- **Generates daily study plans** with technical context
-- **Evaluates answers** using comprehensive rubric
-- **Stores conversation history** and evaluation metrics
-- **Tracks score trends** over time
-- **Integrates with n8n** for dynamic content ingestion
-
-All components run **locally**, end-to-end.
+- **Conducts a real multi-stage mock interview** — the AI acts as a senior interviewer, asking increasingly difficult questions across five structured stages
+- **Adapts difficulty in real time** based on how well you answer — scores above 80% push difficulty up, below 40% brings it down
+- **Evaluates every answer across four dimensions** — technical accuracy, depth of understanding, communication clarity, and problem-solving approach
+- **Fetches real engineering blog posts** from each company's RSS feed daily and lets you ask questions about them, grounded in actual content
+- **Generates a tailored 2-hour prep plan** for whichever company you are targeting
+- **Tracks your progress** over time with per-session scores and stage-level breakdowns
 
 ---
 
-## 🧩 Core Features
+## Supported Companies
 
-### ✅ Multi-Stage Interview System
-- **5 distinct stages** with specific requirements:
-  - **WARMUP**: Introductory questions (2+ questions, 5 min minimum)
-  - **TECHNICAL_DEEP_DIVE**: Core technical assessment (3+ questions, 15 min minimum)
-  - **PROBLEM_SOLVING**: Algorithm & system design (2+ questions, 10 min minimum)
-  - **BEHAVIORAL**: Communication & experience (2+ questions, 5 min minimum)
-  - **WRAP_UP**: Final evaluation and feedback
-- Stage transitions based on time, question count, and performance
-- Automatic progression through interview stages
-
-### ✅ Adaptive Difficulty System
-- **5 difficulty levels** (1-5)
-- Automatically adjusts based on performance:
-  - Score < 40%: Decrease difficulty
-  - Score > 80%: Increase difficulty
-  - Difficulty resets per stage
-
-### ✅ Multi-Dimensional Evaluation
-- **Technical Accuracy**: Correctness of content
-- **Depth of Understanding**: Demonstrates conceptual mastery
-- **Communication Clarity**: Articulation and explanation quality
-- **Problem-Solving Approach**: Methodology and logic
-
-### ✅ JWT Authentication & Multi-User Support
-- Secure user registration and login
-- JWT tokens with 7-day expiration
-- Email-based user identification
-- Role-based access control
-- Protected API endpoints
-
-### ✅ RAG Architecture
-- Technical content stored in vector database (ChromaDB)
-- All responses grounded in retrieved context
-- Reduced hallucination risk
-- n8n integration for dynamic content updates
-
-### ✅ Session Persistence
-- User conversations and history stored in SQLite
-- Session context maintained across requests
-- Weak/strong area tracking
-- Performance history per stage
-
-### ✅ Clean Dark-Mode UI
-- Built with Streamlit
-- NVIDIA-style dark theme
-- Real-time feedback and progress visualization
+| Company | Focus Areas | Blog Source |
+|---------|-------------|-------------|
+| **NVIDIA** | CUDA, GPU architecture, Triton Inference Server, NCCL, DGX infra, MLOps, Kubernetes GPU scheduling | developer.nvidia.com |
+| **Google** | Borg/Kubernetes internals, Spanner, SRE/SLO, Colossus, BeyondCorp, Pub/Sub | cloudblog.withgoogle.com |
+| **Meta** | TAO graph store, Presto, Scuba, Tupperware, PyTorch distributed, AIOps | engineering.fb.com |
+| **Apple** | Differential privacy, CoreML, APNs at scale, Darwin kernel, Secure Enclave | machinelearning.apple.com |
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
-┌─────────────────┐
-│  Streamlit UI   │
-└────────┬────────┘
-         │
-┌────────▼──────────┐
-│  FastAPI Backend  │
-│ ├─ Auth Endpoints │
-│ ├─ Interview Flow │
-│ └─ Content API    │
-└────────┬──────────┘
-         │
-┌────────▼───────────────────────┐
-│  Core Orchestration            │
-│ ├─ State Machine               │
-│ ├─ Session Manager             │
-│ ├─ Content Manager             │
-│ └─ Interview Orchestrator      │
-└────────┬───────────────────────┘
-         │
-    ┌────┴────┬──────────┐
-    │          │          │
-┌───▼──┐  ┌───▼──┐  ┌───▼──┐
-│Agents│  │ChromaDB│  │SQLite│
-└───┬──┘  └───┬───┘  └────┬─┘
-    │         │           │
-┌───▼─────────▼───────────▼───┐
-│  Ollama (Local LLM)         │
-│  ├─ Question Generation     │
-│  ├─ Answer Evaluation       │
-│  └─ Interview Analysis      │
-└─────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                    Streamlit Frontend                     │
+│   Plan · Ask AI · Interview · Progress · History · Blogs │
+└───────────────────────┬──────────────────────────────────┘
+                        │  REST + JWT Bearer
+┌───────────────────────▼──────────────────────────────────┐
+│                  FastAPI Backend                          │
+│                                                          │
+│  /api/auth/*          JWT register & login               │
+│  /api/interview/*     Orchestrated interview flow        │
+│  /api/blogs/*         RSS fetch, history, RAG Q&A        │
+│  /api/ingest/*        n8n webhook receivers              │
+│  /plan/today          Daily prep plan                    │
+│  /ask                 RAG-grounded free-form Q&A         │
+└──────┬──────────────────────────┬────────────────────────┘
+       │                          │
+┌──────▼──────────┐   ┌──────────▼──────────────────────┐
+│ Interview       │   │ RAG Engine                       │
+│ Orchestrator    │   │                                  │
+│                 │   │  ChromaDB  ←  RSS blog articles  │
+│ ┌─────────────┐ │   │            ←  n8n webhook        │
+│ │ State       │ │   │            ←  /api/content/ingest│
+│ │ Machine     │ │   │                                  │
+│ │             │ │   │  embed_store.py  (HuggingFace)   │
+│ │ WARMUP      │ │   │  retrieve.py     (similarity)    │
+│ │ TECHNICAL   │ │   └──────────────────────────────────┘
+│ │ PROBLEM     │ │
+│ │ BEHAVIORAL  │ │   ┌──────────────────────────────────┐
+│ │ WRAP_UP     │ │   │ Agents                           │
+│ └─────────────┘ │   │                                  │
+│                 │   │  question_agent   (generates Qs) │
+│ SessionManager  │   │  enhanced_evaluator (scores ans) │
+│ (SQLite)        │   │  planner_agent    (daily plan)   │
+└─────────────────┘   │  interview_agent  (RAG Q&A)      │
+                      └────────────┬─────────────────────┘
+                                   │
+                      ┌────────────▼─────────────────────┐
+                      │  Ollama  (local LLM)              │
+                      │  default model: llama3.2          │
+                      └──────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  n8n  (workflow automation)  — localhost:5678            │
+│                                                          │
+│  Schedule: 6:00 AM IST daily                            │
+│  → HTTP POST /api/blogs/fetch?company=NVIDIA            │
+│    (repeat per company)                                  │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Interview Flow
+
+```
+Register / Login
+      │
+      ▼
+ Select Company  (NVIDIA / Google / Meta / Apple)
+      │
+      ▼
+ POST /api/interview/start   →  session_id returned
+      │
+      ▼
+ POST /api/interview/next    →  question + stage + difficulty
+      │
+      ▼
+ User answers
+      │
+      ▼
+ POST /api/interview/submit  →  4-dimension evaluation + feedback
+      │
+      ▼
+ Repeat until stage requirements met, then auto-advance
+      │
+      ▼
+ WARMUP → TECHNICAL_DEEP_DIVE → PROBLEM_SOLVING → BEHAVIORAL → WRAP_UP
+      │
+      ▼
+ Overall score + weak/strong area report
+```
+
+### Stage Requirements
+
+| Stage | Min Time | Min Questions | Purpose |
+|-------|----------|---------------|---------|
+| WARMUP | 5 min | 2 | Establish baseline, background |
+| TECHNICAL_DEEP_DIVE | 15 min | 3 | Core technical depth |
+| PROBLEM_SOLVING | 10 min | 2 | System design, algorithms |
+| BEHAVIORAL | 5 min | 2 | Ownership, past experience |
+| WRAP_UP | — | — | Final report, overall score |
+
+### Adaptive Difficulty
+
+| Score | Action |
+|-------|--------|
+| > 80% | Difficulty increases (+1, max 5) |
+| 40–80% | Difficulty stays the same |
+| < 40% | Difficulty decreases (−1, min 1) |
+
+### Evaluation Dimensions
+
+Every answer is scored across four dimensions and combined into an overall score:
+
+| Dimension | Weight | What It Measures |
+|-----------|--------|------------------|
+| Technical Accuracy | 40% | Correctness of facts, terminology, concepts |
+| Depth of Understanding | 30% | The "why" behind the "what" |
+| Communication Clarity | 15% | Structure, examples, ease of explanation |
+| Problem-Solving Approach | 15% | Trade-off reasoning, edge cases, methodology |
+
+---
+
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend API | FastAPI |
-| UI | Streamlit |
-| LLM | Ollama (local) |
-| Vector DB | ChromaDB |
-| Embeddings | sentence-transformers |
-| Persistence | SQLite |
-| Authentication | JWT (python-jose) |
-| Hashing | bcrypt |
-| Architecture | RAG + Agentic AI |
-| Container | Docker & Docker Compose |
-| Language | Python 3.9+ |
+| Backend API | FastAPI + Uvicorn |
+| Frontend | Streamlit |
+| Local LLM | Ollama (llama3.2 default) |
+| Vector Store | ChromaDB |
+| Embeddings | sentence-transformers/all-MiniLM-L6-v2 |
+| ORM & DB | SQLAlchemy + SQLite |
+| Authentication | JWT (python-jose) + bcrypt |
+| Automation | n8n (self-hosted) |
+| Containers | Docker + Docker Compose |
+| Language | Python 3.11 |
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-nvidia-interview-ai-agent/
+interview-prep-ai/
+│
 ├── backend/
 │   ├── api/
-│   │   ├── main.py              # FastAPI app & endpoints
-│   │   ├── auth.py              # JWT & password hashing
-│   │   ├── database.py          # SQLAlchemy setup
-│   │   ├── models.py            # ORM models
-│   │   ├── schemas.py           # Pydantic schemas
-│   │   ├── middleware.py        # Auth middleware
-│   │   └── blog.py              # Daily blog generation
+│   │   ├── main.py            # FastAPI app, all routes
+│   │   ├── auth.py            # JWT creation and verification
+│   │   ├── middleware.py      # get_current_user dependency
+│   │   ├── database.py        # SQLAlchemy engine (reads DATABASE_URL env)
+│   │   ├── models.py          # ORM models (User, Session, Response, Blog)
+│   │   ├── schemas.py         # Pydantic request/response schemas
+│   │   └── blog.py            # RSS fetcher + blog history
+│   │
 │   ├── core/
-│   │   ├── state_machine.py     # Interview state management
-│   │   ├── orchestrator.py      # Interview orchestration
-│   │   ├── session_manager.py   # Session persistence
-│   │   └── content_manager.py   # Content ingestion
+│   │   ├── state_machine.py   # Stage definitions and transition logic
+│   │   ├── orchestrator.py    # Coordinates state machine + session + agents
+│   │   ├── session_manager.py # CRUD for interview sessions in SQLite
+│   │   └── company_profiles.py# NVIDIA/Google/Meta/Apple topic configs + RSS feeds
+│   │
 │   ├── agents/
-│   │   ├── interview_agent.py   # Interview logic
-│   │   ├── evaluator_agent.py   # Answer evaluation
-│   │   ├── question_agent.py    # Question generation
-│   │   ├── planner_agent.py     # Daily plan generation
-│   │   └── llm.py               # LLM interactions
+│   │   ├── llm.py                    # Ollama HTTP client with retry
+│   │   ├── question_agent.py         # Generates stage/company/difficulty-aware questions
+│   │   ├── enhanced_evaluator_agent.py # Multi-dimension JSON scoring
+│   │   ├── evaluator_agent.py        # Simple evaluator (legacy, kept for reference)
+│   │   ├── interview_agent.py        # RAG-grounded free-form Q&A
+│   │   └── planner_agent.py          # Company-specific 2-hour prep plan
+│   │
 │   ├── rag/
-│   │   ├── embed_store.py       # Vector store management
-│   │   └── retrieve.py          # Content retrieval
-│   ├── tests/
-│   │   ├── test_api_auth.py
-│   │   ├── test_auth.py
-│   │   ├── test_orchestrator.py
-│   │   ├── test_e2e_interview.py
-│   │   └── ...
+│   │   ├── embed_store.py     # Store articles into ChromaDB
+│   │   └── retrieve.py        # Similarity search over ChromaDB
+│   │
+│   ├── tests/                 # pytest suite (unit + integration + e2e)
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── .env.example
+│
 ├── frontend/
 │   ├── ui/
-│   │   └── app.py               # Streamlit app
-│   ├── Dockerfile
-│   └── requirements.txt
+│   │   └── app.py             # Streamlit UI (6 tabs)
+│   ├── Dockerfile.ui
+│   └── ui/requirements.txt
+│
 ├── docs/
-│   ├── API.md                   # API documentation
-│   ├── SETUP.md                 # Setup guide
-│   └── TESTING.md               # Testing guide
+│   ├── API.md
+│   ├── SETUP.md
+│   └── TESTING.md
+│
 ├── docker-compose.yml
-└── README.md
+└── .env                       # Root env — picked up by Docker Compose
 ```
 
 ---
 
-## 🔐 Authentication & API
-
-### Authentication Flow
-
-1. **Register**: Create new user account
-   ```bash
-   POST /api/auth/register
-   ```
-
-2. **Login**: Get JWT token
-   ```bash
-   POST /api/auth/login
-   ```
-
-3. **Protected Endpoints**: Use Bearer token in Authorization header
-   ```
-   Authorization: Bearer <jwt-token>
-   ```
-
-### Key API Endpoints
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login and get JWT token |
-| POST | `/api/interview/plan` | Start interview session |
-| POST | `/api/interview/ask` | Get next question |
-| POST | `/api/interview/evaluate` | Submit answer and get evaluation |
-| GET | `/api/interview/session` | Get session context |
-| POST | `/api/content/ingest` | Ingest question from n8n (webhook) |
-| GET | `/health` | Health check |
-
-See [docs/API.md](docs/API.md) for complete documentation.
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose (recommended)
-- OR Python 3.9+, Ollama
 
-### Option 1: Docker Compose (Recommended)
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- 8 GB RAM minimum (Ollama + model + services)
 
-```bash
-# Clone repository
-git clone https://github.com/kaushalacts/nvidia-interview-ai-agent.git
-cd nvidia-interview-ai-agent
-
-# Copy environment file
-cp backend/.env.example backend/.env
-
-# Start all services
-docker-compose up -d
-
-# Access frontend
-open http://localhost:8501
-```
-
-### Option 2: Local Development
-
-See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
-
----
-
-## 📋 Usage Guide
-
-### 1. Register & Login
-```
-Register a new account → Receive JWT token → Use token for subsequent requests
-```
-
-### 2. Start Interview Session
-```
-POST /api/interview/plan → Session created → Interview begins at WARMUP stage
-```
-
-### 3. Answer Questions
-```
-GET current question → POST answer → Receive evaluation → Move to next question
-```
-
-### 4. Stage Progression
-```
-WARMUP (intro) → TECHNICAL_DEEP_DIVE → PROBLEM_SOLVING → BEHAVIORAL → WRAP_UP
-```
-
-Each stage has requirements for time, question count, and performance metrics.
-
-### 5. Review Results
-```
-See multi-dimensional evaluation (technical, depth, communication, problem-solving)
-```
-
----
-
-## 🧪 Testing
-
-Run the full test suite:
+### 1. Clone and configure
 
 ```bash
-# Unit tests
-pytest backend/tests/ -v
+git clone https://github.com/kaushalacts/interview-prep-ai.git
+cd interview-prep-ai
 
-# Integration tests
-pytest backend/tests/test_e2e_interview.py -v
-
-# With coverage
-pytest backend/tests/ --cov=backend --cov-report=html
+# Edit the .env file — set a strong JWT_SECRET before exposing publicly
+nano .env
 ```
 
-See [docs/TESTING.md](docs/TESTING.md) for more details.
-
----
-
-## 🛠️ Configuration
-
-Create `backend/.env` file:
+The `.env` file at the root looks like this:
 
 ```env
-JWT_SECRET=your-secret-key-change-in-production-min-32-chars
-OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=mistral
-DATABASE_PATH=./interview_ai.db
-LOG_LEVEL=INFO
+OLLAMA_MODEL=llama3.2
+JWT_SECRET=change-me-to-a-random-32-char-string-before-deploy
+N8N_USER=admin
+N8N_PASSWORD=changeme
+```
+
+### 2. Start all services
+
+```bash
+docker-compose up --build -d
+```
+
+This starts four containers:
+
+| Container | Port | Purpose |
+|-----------|------|---------|
+| `ollama` | — | Local LLM runtime |
+| `interview-backend` | 8000 | FastAPI API |
+| `interview-ui` | 8501 | Streamlit frontend |
+| `n8n` | 5678 | Workflow automation |
+
+### 3. Pull the LLM model
+
+Do this once after the first `up`. The model is ~2 GB.
+
+```bash
+docker exec ollama ollama pull llama3.2
+```
+
+To use a smaller/faster model instead:
+
+```bash
+docker exec ollama ollama pull phi3:mini
+# then set OLLAMA_MODEL=phi3:mini in .env and restart backend
+```
+
+### 4. Open the app
+
+```
+http://localhost:8501
+```
+
+Register an account, pick your target company in the sidebar, and start an interview.
+
+---
+
+## n8n Blog Automation Setup
+
+n8n automates the daily 6 AM blog fetch from each company's engineering blog. This only needs to be set up once.
+
+### Step 1 — Open n8n
+
+```
+http://localhost:5678
+```
+
+Login with the credentials from your `.env` (`N8N_USER` / `N8N_PASSWORD`).
+
+### Step 2 — Create a workflow for each company
+
+For each company (NVIDIA, Google, Meta, Apple):
+
+1. Add a **Schedule Trigger** node — set to `0 6 * * *` (6:00 AM daily), timezone `Asia/Kolkata`
+2. Add an **HTTP Request** node:
+   - Method: `POST`
+   - URL: `http://backend:8000/api/blogs/fetch?company=NVIDIA`
+   - (replace `NVIDIA` with the target company)
+3. Activate the workflow
+
+Fetched articles are embedded into ChromaDB and appear in the **Blogs** tab of the UI automatically.
+
+### Manual fetch (any time)
+
+You can also trigger a fetch on-demand from the Blogs tab in the UI, or directly:
+
+```bash
+curl -X POST "http://localhost:8000/api/blogs/fetch?company=NVIDIA"
 ```
 
 ---
 
-## ⚖️ Design Decisions
+## API Reference
 
-- **Multi-stage architecture**: Simulates real interview progression
-- **Adaptive difficulty**: Personalizes experience based on performance
-- **JWT authentication**: Enables multi-user support
-- **State machine pattern**: Clear, testable interview flow
-- **Session persistence**: Complete history maintained
-- **Modular agents**: Interview, evaluator, question, planner agents
-- **RAG architecture**: Context-grounded responses
-- **Docker deployment**: Reproducible, isolated environments
+All interview endpoints require a JWT token in the `Authorization: Bearer <token>` header. Obtain the token from `/api/auth/login`.
+
+### Authentication
+
+| Method | Endpoint | Body | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/register` | `{email, password, full_name}` | Create account, returns token |
+| POST | `/api/auth/login` | `{email, password}` | Returns JWT token (7-day expiry) |
+
+### Interview Flow
+
+| Method | Endpoint | Body | Description |
+|--------|----------|------|-------------|
+| POST | `/api/interview/start` | `{company}` | Start session, returns `session_id` |
+| POST | `/api/interview/next` | `{session_id, company}` | Get next question (or completion report) |
+| POST | `/api/interview/submit` | `{session_id, question_id, question, answer}` | Submit answer, get evaluation |
+| GET | `/api/interview/session/{session_id}` | — | Get current session context |
+
+### Blogs
+
+| Method | Endpoint | Params | Description |
+|--------|----------|--------|-------------|
+| POST | `/api/blogs/fetch` | `?company=NVIDIA` | Pull latest articles from RSS |
+| GET | `/api/blogs/history` | `?company=NVIDIA` | List stored articles |
+| POST | `/api/blogs/ask` | `{question}` + `?company=NVIDIA` | RAG Q&A over fetched articles |
+
+### Utility
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/plan/today` | `?company=NVIDIA` — Generate 2-hour prep plan |
+| POST | `/ask` | `{question}` — Free-form RAG-grounded Q&A |
+| GET | `/history/scores` | Numeric score history for progress chart |
+| GET | `/health` | Health check |
+
+### n8n Webhooks
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/ingest/blog` | Receive a blog article from n8n and embed it |
+| POST | `/api/content/ingest` | Receive an interview question from n8n |
 
 ---
 
-## 📚 Documentation
+## UI Tabs
 
-- **[API Documentation](docs/API.md)** - Complete API reference with examples
-- **[Setup Guide](docs/SETUP.md)** - Step-by-step setup instructions
-- **[Testing Guide](docs/TESTING.md)** - Testing structure and practices
+| Tab | What It Does |
+|-----|-------------|
+| **Plan** | Generates a company-specific 2-hour prep plan using RAG context |
+| **Ask AI** | Free-form Q&A — answers grounded in ChromaDB articles |
+| **Interview** | Full mock interview loop: start → question → answer → evaluation → repeat |
+| **Progress** | Line chart of scores over time + bar chart by stage |
+| **History** | Current session Q&A + persistent chat history |
+| **Blogs** | Fetch real articles, browse them, ask questions via RAG |
 
 ---
 
-## 🎯 Interview Context
+## Running Tests
 
-This project demonstrates:
+Tests use an in-memory SQLite database — no running services needed.
 
-* Agentic AI design patterns
-* Retrieval-augmented generation
-* State machine architecture
-* Multi-user system design
-* JWT authentication
-* Adaptive algorithms
-* Clean API design
-* Production-ready deployment
+```bash
+cd backend
 
-It reflects **system-level thinking** expected at **NVIDIA**.
+# Full test suite
+pytest tests/ -v
+
+# End-to-end interview flow only
+pytest tests/test_e2e_interview.py -v
+
+# With coverage
+pytest tests/ --cov=. --cov-report=html
+open htmlcov/index.html
+```
+
+The test suite covers:
+- User registration and login flow
+- JWT token creation and verification
+- Interview session lifecycle
+- Stage transitions through all 5 stages
+- Adaptive difficulty adjustment
+- Session persistence across requests
+- Multi-user isolation
+- Enhanced evaluator scoring logic
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWT_SECRET` | *(required)* | Secret key for signing JWT tokens — change before deploying |
+| `OLLAMA_MODEL` | `llama3.2` | Ollama model to use |
+| `OLLAMA_HOST` | `http://ollama:11434` | Ollama endpoint (Docker internal) |
+| `DATABASE_URL` | `sqlite:////data/interview_ai.db` | SQLAlchemy database URL |
+| `N8N_USER` | `admin` | n8n basic auth username |
+| `N8N_PASSWORD` | `changeme` | n8n basic auth password |
+| `LOG_LEVEL` | `INFO` | Logging level |
+
+---
+
+## Local Development (without Docker)
+
+```bash
+# 1. Start Ollama separately
+ollama serve
+ollama pull llama3.2
+
+# 2. Install backend dependencies
+cd backend
+pip install -r requirements.txt
+
+# 3. Set environment variables
+export OLLAMA_HOST=http://localhost:11434
+export DATABASE_URL=sqlite:///./interview_ai.db
+export JWT_SECRET=dev-secret-key
+
+# 4. Run the API
+uvicorn api.main:app --reload --port 8000
+
+# 5. In a separate terminal, run the frontend
+cd frontend/ui
+pip install -r requirements.txt
+API=http://localhost:8000 streamlit run app.py
+```
+
+---
+
+## Design Decisions
+
+**Why local LLM (Ollama)?**
+No API costs, no data leaving your machine, works offline. The trade-off is slower inference compared to hosted APIs.
+
+**Why SQLite?**
+Sufficient for a single-user or small-team tool. Trivial to swap for PostgreSQL by changing `DATABASE_URL`.
+
+**Why ChromaDB for RAG?**
+Runs embedded alongside the backend with zero infrastructure. The same DB volume persists between restarts.
+
+**Why n8n for blog automation?**
+Visual workflow editor makes it easy to add new data sources, transformations, or notification steps without writing code.
+
+**Why the state machine pattern?**
+Interview stages have explicit entry/exit conditions (time, question count, performance). A state machine makes those rules testable and auditable rather than buried in if-else chains.
+
+**Why EnhancedEvaluatorAgent over a simple scorer?**
+The LLM returns structured JSON with four independent dimension scores. This makes the scores chartable, comparable across sessions, and usable to steer the next question's difficulty — none of which is possible with a free-text score string.
+
+---
+
+## Roadmap
+
+- [ ] Add more companies (Amazon, Microsoft, OpenAI)
+- [ ] Spaced-repetition mode — surfaces weak areas from past sessions
+- [ ] Voice input support (Whisper integration)
+- [ ] PDF report export after each interview session
+- [ ] PostgreSQL support for multi-user production deployment
+- [ ] Webhook-triggered model warm-up on container start

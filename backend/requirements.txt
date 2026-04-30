@@ -1,9 +1,8 @@
 # ===== CORE =====
 numpy<2
 fastapi
-uvicorn
-pydantic
-email-validator
+uvicorn[standard]
+pydantic[email]
 requests
 python-dotenv
 sqlalchemy

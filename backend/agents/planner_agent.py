@@ -1,125 +1,79 @@
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import time
 
-from rag.retrieve import query_articles
 from agents.llm import generate_answer
+from core.company_profiles import get_profile
+from rag.retrieve import query_articles
 
-SYSTEM_PROMPT = """
-You are a Principal DevOps / Platform Engineer interviewing at NVIDIA.
+_FALLBACK = """
+Time-Boxed Interview Prep Plan
 
-Your responsibility:
-- Design a DAILY interview-prep plan for a SENIOR DevOps Engineer (₹40 LPA+)
-- Focus on ownership, systems thinking, and production trade-offs
-- Assume strong Linux, networking, cloud, and Kubernetes fundamentals
-
-Core evaluation dimensions at this level:
-- Distributed systems design
-- Reliability, scalability, and performance
-- GPU-aware infrastructure & CI/CD
-- Failure handling & cost optimization
-- Clear reasoning under constraints
-
-This is NOT entry-level DevOps.
+- 00:00-00:15  Systems Warm-up       Refresh one critical concept and its production implications
+- 00:15-00:45  Core Platform Topic   Deep dive: internals, design decisions, failure modes
+- 00:45-01:15  Performance & Reliability  Bottlenecks, SLOs, alerting, cost vs performance
+- 01:15-01:40  Hands-on Scenario     Debug or design a real production problem
+- 01:40-02:00  Senior Interview Q    Open-ended architectural reasoning question
 """
 
-def generate_daily_plan():
-    
-    print ("Generating daily plan ...")
+
+def generate_daily_plan(company: str = "NVIDIA") -> str:
+    profile = get_profile(company)
+    focus = ", ".join(profile["focus_areas"][:6])
+    sre_focus = ", ".join(profile.get("sre_focus", []))
+    display = profile["display_name"]
 
     tz = ZoneInfo("Asia/Kolkata")
-    now = datetime.now(tz)
+    today = datetime.now(tz).strftime("%A, %d %B %Y")
 
-    today = now.strftime("%A, %d %B %Y")
-
+    # Pull RAG context
+    rag_query = f"{company} GPU infrastructure Kubernetes performance optimization DevOps MLOps SRE"
     try:
-        # Pull RAG context focused on GPU infra + DevOps
-        docs = query_articles(
-                query="NVIDIA GPU infrastructure Kubernetes CUDA performance optimization DevOps MLOps SRE", k=3)
-        print ("RAG docs fetched:",len(docs))
+        docs = query_articles(rag_query, k=3)
+        context = "\n".join(f"- {d.get('content', '')[:150]}" for d in docs)
+    except Exception:
+        context = ""
 
-    except Exception as e:
-        print ("RAG failed:", e)
-        docs = []
-
-    context = "\n".join(
-        f"- {d.get('content', '')[:100]}" for d in docs
-    ) or "No specific reference context available."
-
-    prompt = f"""
-{SYSTEM_PROMPT}
+    prompt = f"""You are preparing a senior DevOps/SRE engineer for a {display} interview.
 
 Date: {today}
+Company: {display}
+Key focus areas: {focus}
+SRE emphasis: {sre_focus}
 
-Reference Context (optional background):
-{context}
+{"Recent tech context:\n" + context if context else ""}
 
-TASK:
-Create a **2-hour senior DevOps interview preparation plan**.
+Create a 2-hour interview preparation plan. Return STRICTLY in this format:
 
-Return STRICTLY in the format below.
+Time-Boxed {display} Interview Prep Plan
 
-🕒 Time-Boxed Senior DevOps Plan
+- 00:00-00:15  Systems Warm-up
+  Refresh ONE critical concept from: {focus.split(",")[0].strip()} or related area
+  Why it matters at {display} scale
 
-- 00:00–00:15 → Systems Warm-up
-  • Refresh ONE critical concept (e.g., Linux I/O, networking, containers, scheduling)
-  • Why it matters at scale
+- 00:15-00:45  Core Platform Topic
+  Deep dive into ONE area (internals, design decisions, failure modes)
+  Include: architecture, trade-offs, and what breaks at scale
 
-- 00:15–00:45 → Core Platform Topic
-  • Example areas:
-    - Kubernetes internals (scheduler, CNI, CSI)
-    - GPU scheduling & device plugins
-    - CI/CD design for large monorepos
-    - Infrastructure as Code trade-offs
-  • Include design decisions & failure modes
+- 00:45-01:15  Performance & Reliability
+  Bottlenecks, metrics, SLOs, debugging approach
+  Cost vs performance trade-offs specific to {display}
 
-- 00:45–01:15 → Deep Dive (Performance / Reliability)
-  • Bottlenecks, metrics, and tuning
-  • SLOs, alerts, and production debugging
-  • Cost vs performance trade-offs
+- 01:15-01:40  Hands-on Scenario
+  Design or debug a realistic {display} production scenario
+  Constraints: scale, latency, cost, privacy
 
-- 01:15–01:40 → Hands-on / Thought Exercise
-  • Design or debug a real production scenario
-  • Constraints: scale, latency, cost, security
-  • Explain decisions clearly
+- 01:40-02:00  Senior Interview Question
+  One open-ended architectural question from {display}'s domain
+  Expect the interviewer to challenge every assumption
 
-- 01:40–02:00 → Senior Interview Question
-  • Open-ended, real-world question
-  • Expect architectural reasoning
-  • No trivia or definitions
+Rules: Think like an owner. No buzzwords. Show reasoning and trade-offs."""
 
-Rules:
-- Think like an OWNER, not an operator
-- Avoid generic DevOps buzzwords
-- Assume interviewer challenges every decision
-- Prioritize reasoning, trade-offs, and impact
-"""
-
-#    return generate_answer(prompt)
-    
     try:
         start = time.time()
-
         result = generate_answer(prompt)
-
-        print (f"LLM took {time.time() - start:.2f}s")
-
-        #print("✅ LLM response received")
-
-        if not result:
-            return "⚠️ Empty response from LLM"
-
-        return result
-
+        print(f"Planner LLM took {time.time() - start:.1f}s")
+        return result or _FALLBACK
     except Exception as e:
-        print ("❌ LLM failed:", e)
-
-        return """
-🕒 Time-Boxed Senior DevOps Plan
-
-- 00:00–00:15 → Linux CPU scheduling
-- 00:15–00:45 → Kubernetes GPU scheduling
-- 00:45–01:15 → SLO design
-- 01:15–01:40 → Debug production issue
-- 01:40–02:00 → Design multi-tenant infra
-"""
+        print(f"Planner LLM failed: {e}")
+        return _FALLBACK

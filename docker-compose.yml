@@ -4,6 +4,8 @@ networks:
   app_net:
 
 services:
+
+  # ── Ollama (local LLM) ────────────────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -23,25 +25,29 @@ services:
           memory: 6g
           cpus: "2"
 
+  # ── Backend (FastAPI) ─────────────────────────────────────────────────────
   backend:
-    image: thehiddenboy143/nvidia-interview-backend:1.0.3
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: interview-backend
     volumes:
       - backend_sqlite:/data
       - chroma_data:/app/rag/chroma_db
     environment:
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production-min-32-chars}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=10080
-      - DATABASE_URL=sqlite:///./data/interview_ai.db
+      - DATABASE_URL=sqlite:////data/interview_ai.db
       - OLLAMA_HOST=http://ollama:11434
-      - OLLAMA_MODEL=llama3.2
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
     depends_on:
       ollama:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
       interval: 30s
+      timeout: 10s
       retries: 5
     restart: unless-stopped
     networks:
@@ -49,31 +55,55 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1g
+          memory: 2g
           cpus: "1"
 
+  # ── Frontend (Streamlit) ──────────────────────────────────────────────────
   ui:
-    image: thehiddenboy143/nvidia-interview-ui:1.0.1
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.ui
     container_name: interview-ui
     ports:
       - "8501:8501"
     environment:
-      API: http://backend:8000
+      - API=http://backend:8000
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - app_net
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
+  # ── n8n (workflow automation — blog fetch at 6 AM) ────────────────────────
   n8n:
     image: n8nio/n8n:latest
     container_name: n8n
+    ports:
+      - "5678:5678"           # access n8n UI at http://localhost:5678
     volumes:
       - n8n_data:/home/node/.n8n
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-changeme}
+      - WEBHOOK_URL=http://backend:8000
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - GENERIC_TIMEZONE=Asia/Kolkata
     restart: unless-stopped
     networks:
       - app_net
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
 
 volumes:
   backend_sqlite:

@@ -54,6 +54,7 @@ COPY --from=builder /install /usr/local
 COPY api ./api
 COPY agents ./agents
 COPY rag ./rag
+COPY core ./core
 
 # ---- Drop privileges (FINAL STEP) ----
 USER appuser
